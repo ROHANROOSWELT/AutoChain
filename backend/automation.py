@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from typing import Any
 import uuid
 
+from config import get_simulated_now
+
 
 def apply_rules(item: dict) -> dict:
     """Dispatch to the correct automaton based on item type."""
@@ -33,7 +35,7 @@ def _handle_subscription(item: dict) -> dict:
     auto_pause    = params.get("auto_pause_if_inactive", True)
 
     # ── Time simulation ───────────────────────────────────────
-    now         = datetime.utcnow()
+    now         = get_simulated_now()
     start_time  = now                                               # contract created now
     expiry_time = start_time + timedelta(days=duration_mo * 30)    # e.g. 90 days
     next_renewal= start_time + timedelta(days=30)                  # first renewal in 30 days
@@ -136,7 +138,7 @@ def _handle_bill(item: dict) -> dict:
     increase_pct = float(item.get("increase_pct") or params.get("increase_pct") or 0)
 
     # ── Due-date simulation ────────────────────────────────────
-    now = datetime.utcnow()
+    now = get_simulated_now()
     # Use provided due_date or fall back to end of month
     due_date_str = params.get("due_date") or item.get("dueDate")
     if due_date_str and due_date_str not in ("end of month", None):
@@ -271,7 +273,7 @@ def _handle_purchase(item: dict) -> dict:
     amount         = item.get("amount", "0")
     currency       = item.get("currency", "INR")
 
-    now              = datetime.utcnow()
+    now              = get_simulated_now()
     warranty_expiry  = now + timedelta(days=warranty_mo * 30)
     grace_start      = warranty_expiry - timedelta(days=30)   # 30-day alert window
     days_to_expiry   = (warranty_expiry - now).days

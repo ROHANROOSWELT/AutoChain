@@ -11,6 +11,7 @@ import time
 from ai_agent import analyze_text
 from automation import apply_rules
 from blockchain import execute_blockchain_action, get_all_assets, get_nft_by_id
+from config import add_simulated_days, reset_simulation
 
 app = FastAPI(
     title="AutoChain API",
@@ -65,13 +66,19 @@ def analyze(req: AnalyzeRequest):
     if not result.get("success"):
         raise HTTPException(status_code=500, detail="AI analysis failed")
     
+    extraction = result.get("data") or {}
+    items = extraction.get("items") or []
+
     return {
         "status": "analyzed",
         "elapsed_seconds": elapsed,
         "model_used": result.get("model"),
         "autonomous_mode": req.autonomous_mode,
-        "extraction": result["data"],
-        "item_count": len(result["data"].get("items", []))
+        # Items exposed at root AND under extraction for frontend compatibility
+        "items": items,
+        "summary": extraction.get("summary", ""),
+        "extraction": extraction,
+        "item_count": len(items)
     }
 
 
@@ -112,7 +119,7 @@ def execute(req: ExecuteRequest):
         "successful_actions": successful,
         "failed_actions": len(results) - successful,
         "results": results,
-        "network": "Polkadot Hub EVM (Simulated)"
+        "network": "Sepolia Testnet (Real Blockchain)"
     }
 
 
@@ -164,7 +171,7 @@ def pipeline(req: AnalyzeRequest):
         "successful_actions": successful,
         "ai_extraction": ai_result["data"],
         "execution_results": execution_results,
-        "network": "Polkadot Hub EVM (Simulated)"
+        "network": "Sepolia Testnet (Real Blockchain)"
     }
 
 
@@ -181,6 +188,25 @@ def get_nft(token_id: int):
     if not nft:
         raise HTTPException(status_code=404, detail=f"NFT #{token_id} not found")
     return {"status": "found", "nft": nft}
+
+
+@app.post("/simulate_time")
+def simulate_time():
+    """Fast-forwards the global clock to simulate subscription expiry and renewals."""
+    days = 90
+    new_offset = add_simulated_days(days)
+    return {
+        "status": "time_simulated",
+        "days_added": days,
+        "total_offset_days": new_offset,
+        "message": f"Global clock advanced by {days} days (3 months)"
+    }
+
+
+@app.post("/reset_time")
+def reset_time():
+    reset_simulation()
+    return {"status": "time_reset", "message": "Global clock reset to true current time."}
 
 
 @app.get("/health")

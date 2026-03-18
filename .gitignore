@@ -4,12 +4,23 @@ __pycache__/
 *$py.class
 venv/
 .env
+.env.*
+*.sqlite3
 
 # Node
 node_modules/
 dist/
 dist-ssr/
+build/
 *.local
+
+# Contracts / Blockchain
+artifacts/
+cache/
+
+# Logs
+*.log
+logs/
 
 # IDE
 .vscode/

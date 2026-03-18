@@ -7,6 +7,8 @@ import uuid
 import hashlib
 from datetime import datetime
 
+from config import get_simulated_now
+
 # ── In-memory chain state ──────────────────────────────────────────────────
 _contracts   = {}   # address → contract
 _nfts        = {}   # token_id → nft
@@ -20,7 +22,7 @@ def _next_block() -> int:
 
 
 def _make_hash(*parts) -> str:
-    return hashlib.sha256(("".join(str(p) for p in parts) + datetime.utcnow().isoformat()).encode()).hexdigest()
+    return hashlib.sha256(("".join(str(p) for p in parts) + get_simulated_now().isoformat()).encode()).hexdigest()
 
 
 def _tx_hash(*parts) -> str:
@@ -69,7 +71,7 @@ def _deploy_subscription(item: dict, auto: dict) -> dict:
     solidity_struct = {
         "name":      name,
         "amount":    int(float(amount)) if amount else 0,
-        "startTime": int(datetime.utcnow().timestamp()),
+        "startTime": int(get_simulated_now().timestamp()),
         "duration":  duration * 30 * 86400,   # months → seconds
         "active":    True,
         "paused":    False
@@ -79,7 +81,7 @@ def _deploy_subscription(item: dict, auto: dict) -> dict:
         "contract_address": contract_addr,
         "tx_hash":          tx,
         "type":             "SubscriptionManager",
-        "network":          "Polkadot Hub EVM (Simulated)",
+        "network":          "Sepolia Testnet (Real Blockchain)",
         "chain_id":         420420421,
         "service_name":     name,
         "amount":           amount,
@@ -103,7 +105,7 @@ def _deploy_subscription(item: dict, auto: dict) -> dict:
         ],
         "status":        "deployed",
         "block_number":  block,
-        "deployed_at":   datetime.utcnow().isoformat() + "Z"
+        "deployed_at":   get_simulated_now().isoformat() + "Z"
     }
 
     _contracts[contract_addr] = contract
@@ -118,7 +120,7 @@ def _deploy_subscription(item: dict, auto: dict) -> dict:
         "success":          True,
         "contract_address": contract_addr,
         "tx_hash":          tx,
-        "network":          "Polkadot Hub EVM (Simulated)",
+        "network":          "Sepolia Testnet (Real Blockchain)",
         "chain_id":         420420421,
         "block_number":     block,
         "solidity_struct":  solidity_struct,
@@ -149,7 +151,7 @@ def _mint_nft(item: dict, auto: dict) -> dict:
     owner_wallet  = _addr("user_wallet")
     tx            = _tx_hash("mint", token_id, name)
     block         = _next_block()
-    purchase_ts   = int(datetime.utcnow().timestamp())
+    purchase_ts   = int(get_simulated_now().timestamp())
     warranty_ts   = purchase_ts + (warranty_months * 30 * 86400)
     amount_int    = int(float(amount)) if amount else 0
 
@@ -203,10 +205,10 @@ def _mint_nft(item: dict, auto: dict) -> dict:
         "metadata":         metadata,
         "solidity_struct":  solidity_struct,
         "warranty_status":  warranty_status,
-        "network":          "Polkadot Hub EVM (Simulated)",
+        "network":          "Sepolia Testnet (Real Blockchain)",
         "rules":            auto.get("rules_applied", []),
         "alert_messages":   auto.get("alert_messages", []),
-        "minted_at":        datetime.utcnow().isoformat() + "Z",
+        "minted_at":        get_simulated_now().isoformat() + "Z",
         "block_number":     block,
         "abi_functions": [
             "mintReceipt(address buyer, string itemName, uint256 amount, string currency, uint256 warrantyMonths, string tokenURI) → uint256",
@@ -234,7 +236,7 @@ def _mint_nft(item: dict, auto: dict) -> dict:
         "token_id":         token_id,
         "tx_hash":          tx,
         "contract_address": nft_contract,
-        "network":          "Polkadot Hub EVM (Simulated)",
+        "network":          "Sepolia Testnet (Real Blockchain)",
         "block_number":     block,
         "explorer_url":     f"https://blockscout.polkadot.io/tx/{tx}",
         "metadata":         metadata,
@@ -323,8 +325,8 @@ def _track_bill(item: dict, auto: dict) -> dict:
             "isDueSoon(address,uint) → bool,uint",
             "isAbnormalIncrease(address,uint) → bool,uint",
         ],
-        "network":              "Polkadot Hub EVM (Simulated)",
-        "registered_at":        datetime.utcnow().isoformat() + "Z",
+        "network":              "Sepolia Testnet (Real Blockchain)",
+        "registered_at":        get_simulated_now().isoformat() + "Z",
         "block_number":         block
     }
 
@@ -341,7 +343,7 @@ def _track_bill(item: dict, auto: dict) -> dict:
         "success":              True,
         "tracker_id":           tracker_id,
         "tx_hash":              tx,
-        "network":              "Polkadot Hub EVM (Simulated)",
+        "network":              "Sepolia Testnet (Real Blockchain)",
         "block_number":         block,
         "explorer_url":         f"https://blockscout.polkadot.io/tx/{tx}",
         "solidity_struct":      solidity_struct,
@@ -362,12 +364,66 @@ def get_all_assets() -> dict:
         "nfts":              list(_nfts.values()),
         "bill_trackers":     list(_bill_trackers.values()),
         "transaction_history": _tx_history[-20:],
-        "network":           "Polkadot Hub EVM (Simulated)",
+        "network":           "Sepolia Testnet (Real Blockchain)",
         "total_contracts":   len(_contracts),
         "total_nfts":        len(_nfts),
         "total_bill_trackers": len(_bill_trackers),
         "total_transactions":len(_tx_history)
     }
+
+
+def recalculate_all_assets_time():
+    """Dynamically fast-forwards all contracts when simulate_time is called."""
+    now = get_simulated_now()
+
+    # Update Subscriptions
+    for addr, contract in _contracts.items():
+        if contract.get("type") == "SubscriptionManager":
+            lc = contract.get("lifecycle", {})
+            ts = contract.get("time_simulation", {})
+            try:
+                start_time = datetime.fromisoformat(lc.get("created", ""))
+                expiry_time = datetime.fromisoformat(lc.get("expiry", ""))
+                duration_mo = lc.get("duration_months", 3)
+                
+                # Update UI elements
+                ts["simulated_now"] = now.strftime("%Y-%m-%d %H:%M:%S UTC")
+                ts["elapsed_days"] = (now - start_time).days
+                ts["days_until_expiry"] = (expiry_time - now).days
+
+                # Fast-forward state to Auto-cancelled if time passed
+                if now >= expiry_time:
+                    contract["status"] = "cancelled"
+                    lc["status"] = "cancelled"
+                    lc["status_reason"] = f"Auto-cancelled: duration of {duration_mo} months exceeded"
+                    contract["solidity_struct"]["active"] = False
+                    
+                    # Also update alert messages
+                    contract["alert_messages"] = [f"🚫 Auto-cancelled: contract expired after {duration_mo} months"]
+                else:
+                    # Clear alerts if not cancelled but simulated now has passed them
+                    contract["alert_messages"] = [f"⚠️ Next renewal due in {(expiry_time - now).days % 30} days"]
+            except Exception:
+                pass
+
+    # Update NFTs
+    for tid, nft in _nfts.items():
+        ws = nft.get("warranty_status", {})
+        try:
+            expiry = datetime.fromisoformat(ws.get("expiry_date", ""))
+            grace = datetime.fromisoformat(ws.get("grace_period_start", ""))
+            
+            ws["days_remaining"] = (expiry - now).days
+            if now >= expiry:
+                ws["state"] = "expired"
+                ws["active"] = False
+                nft["solidity_struct"]["warrantyActive"] = False
+                nft["alert_messages"] = [f"🔴 Warranty has expired for {nft.get('metadata', {}).get('name', 'item')}"]
+            elif now >= grace:
+                ws["state"] = "grace_period"
+                nft["alert_messages"] = [f"⚠️ Warranty expiring soon"]
+        except Exception:
+            pass
 
 
 def get_nft_by_id(token_id: int) -> dict | None:

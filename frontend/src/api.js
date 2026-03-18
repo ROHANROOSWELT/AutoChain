@@ -20,4 +20,10 @@ export const runPipeline = (text, autonomousMode = false) =>
 export const getAssets = () =>
   api.get('/assets').then(r => r.data)
 
+export const simulateTime = () =>
+  api.post('/simulate_time').then(r => r.data)
+
+export const resetTime = () =>
+  api.post('/reset_time').then(r => r.data)
+
 export default api

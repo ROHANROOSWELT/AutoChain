@@ -1,84 +1,54 @@
 function TxChip({ hash }) {
   const short = hash ? `${hash.slice(0, 10)}...${hash.slice(-6)}` : ''
-  return <span className="address-chip">{short}</span>
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(hash)
+    alert('Hash copied to clipboard!')
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <span className="address-chip">{short}</span>
+      <button 
+        onClick={handleCopy}
+        style={{ 
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0, 
+          fontSize: '0.7rem', color: 'var(--text-muted)' 
+        }}
+        title="Copy Full Hash"
+      >
+        📋
+      </button>
+      {hash.startsWith('0x') && (
+        <a 
+          href={`https://sepolia.etherscan.io/tx/${hash}`} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ textDecoration: 'none', fontSize: '0.7rem' }}
+          title="View on Etherscan"
+        >
+          🔗
+        </a>
+      )}
+    </div>
+  )
 }
 
 function AlertMessages({ messages }) {
   if (!messages || messages.length === 0) return null
   return (
-    <div className="mb-3 space-y-1">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
       {messages.map((msg, i) => (
-        <div key={i} className="flex items-start gap-2 text-xs px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200">
-          <span className="shrink-0">🔔</span>
-          {msg}
+        <div key={i} className="animate-enter" style={{
+          display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+          padding: '0.75rem 1rem', borderRadius: '1rem',
+          background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
+          color: 'rgba(251,191,36,0.9)', boxShadow: '0 4px 12px rgba(245,158,11,0.05)',
+        }}>
+          <span style={{ fontSize: '1rem', flexShrink: 0 }}>🔔</span>
+          <span style={{ fontSize: '0.7rem', fontWeight: 700, lineHeight: 1.5 }}>{msg}</span>
         </div>
       ))}
-    </div>
-  )
-}
-
-function TimeSimulation({ sim }) {
-  if (!sim) return null
-  return (
-    <div className="mb-3">
-      <p className="text-xs text-slate-500 mb-1.5 font-medium uppercase tracking-wide">Time Simulation</p>
-      <div className="grid grid-cols-2 gap-1">
-        {[
-          ['Start',           sim.start_time],
-          ['Next Renewal',    sim.next_renewal],
-          ['Expiry',          sim.expiry_time],
-          ['Days to Renewal', sim.days_until_renewal != null ? `${sim.days_until_renewal}d` : '-'],
-          ['Days to Expiry',  sim.days_until_expiry  != null ? `${sim.days_until_expiry}d`  : '-'],
-        ].map(([label, val]) => val != null && (
-          <div key={label} className="text-xs px-2 py-1 rounded bg-white/5 flex justify-between gap-2">
-            <span className="text-slate-500">{label}</span>
-            <span className="text-brand-300 font-mono">{val}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function SolidityStruct({ s }) {
-  if (!s) return null
-  return (
-    <div className="mb-3">
-      <p className="text-xs text-slate-500 mb-1.5 font-medium uppercase tracking-wide">Contract Struct</p>
-      <div className="terminal-box text-xs leading-relaxed">
-        <span className="text-purple-400">struct </span>
-        <span className="text-blue-300">Subscription</span>
-        <span className="text-slate-400"> {'{'}</span>
-        {Object.entries(s).map(([k, v]) => (
-          <div key={k} className="pl-4">
-            <span className="text-green-400">{k}</span>
-            <span className="text-slate-500">: </span>
-            <span className="text-amber-300">{String(v)}</span>
-          </div>
-        ))}
-        <span className="text-slate-400">{'}'}</span>
-      </div>
-    </div>
-  )
-}
-
-function RuleItem({ rule }) {
-  const icon = rule.triggered ? '✅' :
-    rule.status === 'monitoring' ? '👁️' :
-    rule.status === 'scheduled'  ? '🕐' : '⚙️'
-
-  return (
-    <div className="flex items-start gap-2 py-1.5 border-b border-white/5 last:border-0">
-      <span className="text-sm shrink-0">{icon}</span>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm text-slate-300">{rule.description}</div>
-        {rule.trigger_date && <div className="text-xs text-slate-500 mt-0.5">Triggers: {rule.trigger_date}</div>}
-        {rule.triggered && <div className="text-xs text-emerald-400 mt-0.5">▶ Triggered</div>}
-      </div>
-      <span className={`text-xs shrink-0 font-medium ${
-        rule.triggered ? 'text-emerald-400' :
-        rule.status === 'monitoring' ? 'text-amber-400' : 'text-slate-500'
-      }`}>{rule.status}</span>
     </div>
   )
 }
@@ -96,45 +66,65 @@ function ExecutionCard({ result }) {
     bill_alert: 'Bill Tracked',
   }[decision] || 'Action Executed'
 
+  const cardBorder = success ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'
+  const cardBg     = success ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)'
+  const iconBg     = success ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'
+  const textColor  = success ? '#34d399' : '#f87171'
+
   return (
-    <div className={`rounded-xl border p-5 mb-4 animate-enter ${
-      success ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-red-500/25 bg-red-500/5'
-    }`}>
+    <div className="animate-enter" style={{
+      borderRadius: '1.25rem', border: `2px solid ${cardBorder}`, background: cardBg,
+      padding: '1.25rem', marginBottom: '1.25rem', position: 'relative', overflow: 'hidden',
+      transition: 'border-color 0.3s, transform 0.3s',
+    }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)' }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">{typeIcon}</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', position: 'relative', zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+          <div style={{
+            width: '2.5rem', height: '2.5rem', borderRadius: '0.75rem',
+            background: iconBg, display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: '1.25rem',
+          }}>
+            {typeIcon}
+          </div>
           <div>
-            <h3 className="font-bold text-white">{item.name}</h3>
-            <span className={`text-xs font-semibold ${success ? 'text-emerald-400' : 'text-red-400'}`}>
-              {success ? `✓ ${actionLabel}` : '✗ Failed'}
-            </span>
+            <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.01em' }}>
+              {item.name}
+            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem' }}>
+              <span style={{ width: '0.35rem', height: '0.35rem', borderRadius: '50%', background: textColor, boxShadow: `0 0 0 3px ${iconBg}` }} />
+              <span style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: textColor }}>
+                {success ? actionLabel : 'Protocol Terminated'}
+              </span>
+            </div>
           </div>
         </div>
-        <span className="text-xs text-slate-500">{blockchain?.network}</span>
+        <div style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>
+          {blockchain?.network || 'EVM Mainnet'}
+        </div>
       </div>
 
-      {/* Alert messages */}
       <AlertMessages messages={blockchain?.alert_messages || automation?.alert_messages} />
 
-      {/* Blockchain details */}
+      {/* Terminal */}
       {blockchain && (
-        <div className="mb-4">
-          <p className="text-xs text-slate-500 mb-1.5 font-medium uppercase tracking-wide">Blockchain</p>
-          <div className="terminal-box space-y-1">
+        <div style={{ marginBottom: '1.25rem', position: 'relative', zIndex: 10 }}>
+          <p style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-muted)', marginBottom: '0.5rem', marginLeft: '0.25rem' }}>
+            On-Chain Registry
+          </p>
+          <div className="terminal-box" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--bg-overlay)' }}>
             {[
-              ['tx_hash',   blockchain.tx_hash && <TxChip hash={blockchain.tx_hash} />],
-              ['contract',  blockchain.contract_address && <TxChip hash={blockchain.contract_address} />],
-              ['token_id',  blockchain.token_id  && <span className="text-green-400">#{blockchain.token_id}</span>],
-              ['tracker',   blockchain.tracker_id && <span className="text-green-400">{blockchain.tracker_id}</span>],
-              ['block',     blockchain.block_number && <span className="text-green-400">#{blockchain.block_number}</span>],
-              ['explorer',  blockchain.explorer_url && (
-                <a href={blockchain.explorer_url} target="_blank" rel="noopener noreferrer"
-                   className="text-brand-400 hover:text-brand-300 underline text-xs">View →</a>
-              )],
+              ['TX_HASH',   blockchain.tx_hash && <TxChip hash={blockchain.tx_hash} />],
+              ['STMT_ADDR', blockchain.contract_address && <TxChip hash={blockchain.contract_address} />],
+              ['TOKEN_ID',  blockchain.token_id  && <span style={{ color: '#34d399', fontWeight: 700 }}>#{blockchain.token_id}</span>],
+              ['TRACKER',   blockchain.tracker_id && <span style={{ color: '#34d399', fontWeight: 700 }}>{blockchain.tracker_id}</span>],
+              ['BLOCK',     blockchain.block_number && <span style={{ color: 'var(--text-muted)' }}>#{blockchain.block_number}</span>],
             ].filter(([, v]) => !!v).map(([label, val]) => (
-              <div key={label} className="data-row border-0 py-1">
-                <span className="text-slate-500">{label}</span>
+              <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '0.35rem', borderBottom: '1px solid var(--border-base)' }}>
+                <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 800 }}>{label}</span>
                 {val}
               </div>
             ))}
@@ -142,38 +132,19 @@ function ExecutionCard({ result }) {
         </div>
       )}
 
-      {/* Solidity struct */}
-      <SolidityStruct s={blockchain?.solidity_struct} />
-
-      {/* Time simulation (subscriptions) */}
-      <TimeSimulation sim={automation?.time_simulation} />
-
-      {/* NFT metadata */}
-      {blockchain?.metadata?.attributes?.length > 0 && (
-        <div className="mb-4">
-          <p className="text-xs text-slate-500 mb-1.5 font-medium uppercase tracking-wide">NFT Metadata</p>
-          <div className="grid grid-cols-2 gap-1">
-            {blockchain.metadata.attributes.map((a, i) => (
-              <div key={i} className="text-xs py-1 px-2 rounded bg-white/5">
-                <span className="text-slate-500">{a.trait_type}: </span>
-                <span className="text-slate-300">{a.value}</span>
-              </div>
-            ))}
+      {/* Stats Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', position: 'relative', zIndex: 10 }}>
+        {automation?.time_simulation && Object.entries(automation.time_simulation).slice(0, 4).map(([k, v]) => (
+          <div key={k} style={{ padding: '0.6rem', borderRadius: '0.75rem', background: 'var(--bg-overlay)', border: '1px solid var(--border-base)' }}>
+            <p style={{ fontSize: '0.55rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+              {k.replace('_', ' ')}
+            </p>
+            <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'JetBrains Mono, monospace', margin: 0 }}>
+              {v}
+            </p>
           </div>
-        </div>
-      )}
-
-      {/* Automation rules */}
-      {automation?.rules_applied?.length > 0 && (
-        <div>
-          <p className="text-xs text-slate-500 mb-1.5 font-medium uppercase tracking-wide">
-            Automation Rules ({automation.rules_applied.length})
-          </p>
-          <div className="rounded-lg bg-black/20 p-3">
-            {automation.rules_applied.map((r, i) => <RuleItem key={i} rule={r} />)}
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   )
 }
@@ -183,28 +154,45 @@ export default function ExecutionPanel({ executionData }) {
   const { results = [], successful_actions, total_items, network } = executionData
 
   return (
-    <div className="glass-card p-6 animate-enter">
-      <div className="flex items-center justify-between mb-5">
+    <div className="glass-card animate-enter" style={{ padding: '1.75rem', borderColor: 'rgba(16,185,129,0.12)' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <div>
-          <p className="section-title">Step 4</p>
-          <h2 className="text-xl font-bold text-white">Execution Results</h2>
-          <p className="text-sm text-slate-500 mt-1">{network}</p>
+          <span className="section-label">Step 4 · Finalization</span>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+            On-Chain Results
+          </h2>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', fontWeight: 400 }}>
+            {network}
+          </p>
         </div>
-        <div className="text-right">
-          <div className="text-2xl font-bold text-emerald-400">{successful_actions}/{total_items}</div>
-          <div className="text-xs text-slate-500">Actions Executed</div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#34d399', letterSpacing: '-0.05em', lineHeight: 1, textShadow: '0 4px 12px rgba(52,211,153,0.2)' }}>
+            {successful_actions}/{total_items}
+          </div>
+          <p style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+            Status: On-Chain Confirmed
+          </p>
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="h-1.5 bg-white/5 rounded-full mb-5 overflow-hidden">
-        <div
-          className="h-full bg-gradient-to-r from-emerald-500 to-brand-500 rounded-full transition-all duration-700"
-          style={{ width: `${total_items ? (successful_actions / total_items) * 100 : 0}%` }}
-        />
+      {/* Progress Bar */}
+      <div style={{
+        height: '0.5rem', borderRadius: '99px', background: 'var(--bg-overlay)',
+        marginBottom: '2rem', overflow: 'hidden', padding: '1px', border: '1px solid var(--border-base)',
+      }}>
+        <div style={{
+          height: '100%', borderRadius: '99px',
+          background: 'linear-gradient(90deg, #34d399, #10b981)',
+          width: `${total_items ? (successful_actions / total_items) * 100 : 0}%`,
+          transition: 'width 1s cubic-bezier(0.16, 1, 0.3, 1)',
+          boxShadow: '0 0 12px rgba(16,185,129,0.5)',
+        }} />
       </div>
 
-      {results.map((r, i) => <ExecutionCard key={i} result={r} />)}
+      <div style={{ maxHeight: '36rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
+        {results.map((r, i) => <ExecutionCard key={i} result={r} />)}
+      </div>
     </div>
   )
 }

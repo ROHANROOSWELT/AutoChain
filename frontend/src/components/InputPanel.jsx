@@ -1,26 +1,10 @@
 import { useState } from 'react'
 
 const SAMPLE_INPUTS = [
-  {
-    label: "Subscriptions",
-    icon: "🔄",
-    text: "I pay Netflix ₹499/month and Spotify ₹199/month. I also have a GitHub Pro subscription at $4/month and OpenAI ChatGPT Plus for $20/month."
-  },
-  {
-    label: "Bills (Spike)",
-    icon: "⚡",
-    text: "Electricity bill ₹2800 this month — last month was ₹1500. Gas bill ₹1800, was ₹800 previous month. Internet bill ₹999 same as last month. Mobile bill ₹499."
-  },
-  {
-    label: "Purchase Receipt",
-    icon: "🛍️",
-    text: "Amazon order placed: Wireless headphones Sony WH-1000XM5, Amount ₹24,999. Order #402-8234932-4392832. Delivered to home address."
-  },
-  {
-    label: "Mixed Data",
-    icon: "✨",
-    text: "Netflix ₹499/month, Electricity bill ₹2800 this month (was ₹1500 last month). Also bought a new laptop from Amazon for ₹58,000. Spotify ₹199/month renewal next week."
-  }
+  { label: 'Subscriptions', icon: '🔄', text: "I pay Netflix ₹499/month and Spotify ₹199/month. I also have a GitHub Pro subscription at $4/month and OpenAI ChatGPT Plus for $20/month." },
+  { label: 'Bills (Spike)', icon: '⚡', text: "Electricity bill ₹2800 this month — last month was ₹1500. Gas bill ₹1800, was ₹800 previous month. Internet bill ₹999 same as last month. Mobile bill ₹499." },
+  { label: 'Receipt',        icon: '🛍️', text: "Amazon order placed: Wireless headphones Sony WH-1000XM5, Amount ₹24,999. Order #402-8234932-4392832. Delivered to home address." },
+  { label: 'Mixed',          icon: '✨', text: "Netflix ₹499/month, Electricity bill ₹2800 this month (was ₹1500 last month). Also bought a new laptop from Amazon for ₹58,000. Spotify ₹199/month renewal next week." },
 ]
 
 export default function InputPanel({ onAnalyze, onPipeline, isLoading }) {
@@ -29,86 +13,119 @@ export default function InputPanel({ onAnalyze, onPipeline, isLoading }) {
 
   const handleAnalyze = () => {
     if (!text.trim()) return
-    if (autonomousMode) {
-      onPipeline(text, autonomousMode)
-    } else {
-      onAnalyze(text, autonomousMode)
-    }
+    autonomousMode ? onPipeline(text, autonomousMode) : onAnalyze(text, autonomousMode)
   }
 
   return (
-    <div className="glass-card p-6 animate-enter">
+    <div className="glass-card animate-enter" style={{ padding: '1.75rem' }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <div>
-          <p className="section-title">Step 1</p>
-          <h2 className="text-xl font-bold text-white">Input Financial Data</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Paste emails, receipts, transaction descriptions, or any financial text
+          <span className="section-label">Protocol Entry</span>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+            Financial Input
+          </h2>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.35rem', lineHeight: 1.5, fontWeight: 400 }}>
+            Paste emails, receipts, or raw transaction text.
           </p>
         </div>
-        <div className="w-12 h-12 rounded-xl bg-brand-500/10 border border-brand-500/20 
-                        flex items-center justify-center text-2xl">
+        <div style={{
+          width: '2.75rem', height: '2.75rem', borderRadius: '0.875rem', flexShrink: 0,
+          background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem',
+        }}>
           🧠
         </div>
       </div>
 
-      {/* Sample inputs */}
-      <div className="mb-4">
-        <p className="text-xs text-slate-500 mb-2 font-medium">Quick samples:</p>
-        <div className="flex flex-wrap gap-2">
+      {/* Presets */}
+      <div style={{ marginBottom: '1.25rem' }}>
+        <span className="section-label">Quick Presets</span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
           {SAMPLE_INPUTS.map((s) => (
             <button
               key={s.label}
               onClick={() => setText(s.text)}
-              className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+              className="btn-secondary"
+              style={{ fontSize: '0.6rem', padding: '0.3rem 0.75rem', letterSpacing: '0.1em', fontWeight: 700, textTransform: 'uppercase' }}
             >
-              <span>{s.icon}</span> {s.label}
+              {s.icon} {s.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Text area */}
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Paste financial text here...&#10;&#10;Examples:&#10;• Netflix ₹499/month renewal next Monday&#10;• Amazon order: iPhone 15 for ₹79,999&#10;• Electricity bill ₹1,800 due Feb 28"
-        rows={7}
-        className="w-full bg-black/30 border border-white/8 rounded-xl px-4 py-3 
-                   text-sm text-slate-200 placeholder-slate-600 resize-none
-                   focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20
-                   transition-all duration-200 font-mono leading-relaxed"
-      />
+      {/* Textarea */}
+      <div style={{ position: 'relative' }}>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={'Paste financial text here...\n\ne.g. "Bought iPhone ₹80,000 today"'}
+          rows={6}
+          style={{
+            width: '100%',
+            background: 'var(--input-bg)',
+            border: '1px solid var(--input-border)',
+            borderRadius: '0.875rem',
+            padding: '1rem 1.25rem',
+            color: 'var(--text-primary)',
+            fontSize: '0.82rem',
+            resize: 'none',
+            outline: 'none',
+            fontFamily: "'JetBrains Mono', monospace",
+            lineHeight: 1.65,
+            transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+            boxSizing: 'border-box',
+          }}
+          onFocus={(e) => {
+            e.target.style.borderColor = 'rgba(16,185,129,0.5)'
+            e.target.style.boxShadow = '0 0 0 3px rgba(16,185,129,0.08)'
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = 'var(--input-border)'
+            e.target.style.boxShadow = 'none'
+          }}
+        />
+      </div>
 
-      {/* Footer controls */}
-      <div className="flex items-center justify-between mt-4">
-        {/* Autonomous mode toggle */}
-        <label className="flex items-center gap-3 cursor-pointer group">
-          <div className="relative">
+      {/* Footer row */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.25rem' }}>
+        {/* Autonomous toggle */}
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>
+          <div style={{ position: 'relative' }}>
             <input
               type="checkbox"
-              className="sr-only"
+              style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
               checked={autonomousMode}
               onChange={(e) => setAutonomousMode(e.target.checked)}
             />
-            <div className={`w-11 h-6 rounded-full transition-all duration-200 ${
-              autonomousMode
-                ? 'bg-brand-500 shadow-lg shadow-brand-500/30'
-                : 'bg-slate-700'
-            }`}>
-              <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all duration-200 ${
-                autonomousMode ? 'left-6' : 'left-1'
-              }`} />
+            <div style={{
+              width: '2.75rem', height: '1.5rem', borderRadius: '99px',
+              background: autonomousMode ? '#10b981' : 'var(--bg-overlay-hover)',
+              border: `1px solid ${autonomousMode ? 'rgba(16,185,129,0.5)' : 'var(--border-base)'}`,
+              transition: 'all 0.3s ease',
+              position: 'relative',
+            }}>
+              <div style={{
+                width: '1.1rem', height: '1.1rem', borderRadius: '50%', background: '#fff',
+                position: 'absolute', top: '0.175rem',
+                left: autonomousMode ? '1.45rem' : '0.18rem',
+                transition: 'left 0.3s cubic-bezier(0.16,1,0.3,1)',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+              }} />
             </div>
           </div>
           <div>
-            <span className={`text-sm font-medium ${autonomousMode ? 'text-brand-300' : 'text-slate-400'}`}>
+            <span style={{
+              fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+              color: autonomousMode ? '#34d399' : 'var(--text-muted)',
+              transition: 'color 0.2s',
+            }}>
               Autonomous Mode
             </span>
             {autonomousMode && (
-              <p className="text-xs text-brand-400 animate-fade-in">
-                ⚡ AI will analyze and execute automatically
+              <p style={{ fontSize: '0.6rem', color: '#34d399', fontWeight: 600, margin: 0, marginTop: '1px', animation: 'pulse 2s ease-in-out infinite' }}>
+                ⚡ Agent will execute on-chain
               </p>
             )}
           </div>
@@ -119,19 +136,19 @@ export default function InputPanel({ onAnalyze, onPipeline, isLoading }) {
           onClick={handleAnalyze}
           disabled={isLoading || !text.trim()}
           className="btn-primary"
+          style={{ width: '100%', height: '2.75rem', fontSize: '0.72rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}
         >
           {isLoading ? (
             <>
-              <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-              Processing...
+              <div style={{
+                width: '1rem', height: '1rem', borderRadius: '50%',
+                border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff',
+                animation: 'spin 0.8s linear infinite',
+              }} />
+              Syncing...
             </>
           ) : (
-            <>
-              {autonomousMode ? '⚡ Auto-Execute' : '🔍 Analyze'}
-            </>
+            <>{autonomousMode ? '⚡ Run Protocol' : '🔍 Analyze Data'}</>
           )}
         </button>
       </div>

@@ -59,7 +59,11 @@ For SUBSCRIPTIONS → action must be "create_subscription_contract":
   "action": "create_subscription_contract",
   "duration": "<integer months, default 3>",
   "risk": "low | medium | high",
-  "reason": "<one sentence explanation>",
+  "reasoning": [
+    "<short bullet point 1>",
+    "<short bullet point 2>",
+    "<short bullet point 3>"
+  ],
   "contract_params": {
     "duration_months": <int>,
     "auto_cancel": true,
@@ -73,7 +77,9 @@ For BILLS → action must be "track_bill":
 {
   "action": "track_bill",
   "risk": "normal | high",
-  "reason": "<one sentence>",
+  "reasoning": [
+    "<short explanation of what was found>"
+  ],
   "bill_params": {
     "due_date": "<estimated or null>",
     "alert_threshold": 80,
@@ -85,7 +91,10 @@ Risk: if amount > ₹2000/$50 mark high
 For PURCHASES → action must be "mint_nft":
 {
   "action": "mint_nft",
-  "reason": "Proof of ownership",
+  "reasoning": [
+    "Proof of ownership required",
+    "On-chain warranty enabled"
+  ],
   "nft_params": {
     "item_name": "<name>",
     "warranty_months": 12
@@ -114,7 +123,7 @@ OUTPUT FORMAT (strict JSON):
       "action": "create_subscription_contract | track_bill | mint_nft",
       "duration": "<months if subscription, else null>",
       "risk": "low | medium | high | normal",
-      "reason": "<one sentence>",
+      "reasoning": ["<sentence 1>", "<sentence 2>"],
       "contract_params": { "duration_months": 3, "auto_cancel": true, "auto_pause_if_inactive": true, "alert_days_before": 3 },
       "bill_params": { "due_date": null, "alert_threshold": 80, "budget_limit": null },
       "nft_params": { "item_name": "", "warranty_months": 12 }
@@ -150,12 +159,25 @@ def analyze_text(user_text: str) -> dict:
             max_tokens=2000
         )
         result = json.loads(response.choices[0].message.content)
-        # Normalise: ensure both `decision` and `action` fields exist
+        
+        # Deduplication
+        seen = set()
+        deduped = []
         for item in result.get("items", []):
+            # Normalise
             if "action" not in item and "decision" in item:
                 item["action"] = item["decision"]
             if "decision" not in item and "action" in item:
                 item["decision"] = item["action"]
+            
+            # Form unique key
+            key = (item.get("name", "").lower(), item.get("type", ""), item.get("amount", ""))
+            if key not in seen:
+                seen.add(key)
+                deduped.append(item)
+        
+        result.setdefault("items", [])
+        result["items"] = deduped
         return {"success": True, "data": result, "model": "gpt-4o-mini"}
 
     except Exception as e:
@@ -185,6 +207,21 @@ def _mock_analysis(user_text: str) -> dict:
     text_lower = user_text.lower()
     items: list[dict] = []
 
+    # Regex patterns to extract amount from raw text dynamically
+    INR_PATTERN = re.compile(r'[₹rR][sS]?\.?\s*(\d[\d,]*(?:\.\d{1,2})?)')
+    USD_PATTERN = re.compile(r'\$\s*(\d[\d,]*(?:\.\d{1,2})?)')
+
+    def _extract_amts(kw, def_curr, def_prev, currency):
+        idx = text_lower.find(kw)
+        if idx != -1:
+            seg = user_text[idx:idx+120]
+            matches = INR_PATTERN.findall(seg) if currency == 'INR' else USD_PATTERN.findall(seg)
+            if len(matches) >= 2:
+                return matches[0].replace(",", ""), matches[1].replace(",", "")
+            elif len(matches) == 1:
+                return matches[0].replace(",", ""), def_prev
+        return def_curr, def_prev
+
     # ── Subscriptions ──────────────────────────────────────────────────
     SUBS = {
         "netflix":          ("Netflix",               "499",  "INR", "monthly"),
@@ -210,6 +247,7 @@ def _mock_analysis(user_text: str) -> dict:
 
     for keyword, (name, amount, currency, freq) in SUBS.items():
         if keyword in text_lower:
+            amount, _ = _extract_amts(keyword, amount, "0", currency)
             risk = _risk_for_amount(amount, currency)
             items.append({
                 "type": "subscription",
@@ -222,11 +260,11 @@ def _mock_analysis(user_text: str) -> dict:
                 "action": "create_subscription_contract",
                 "duration": "3",
                 "risk": risk,
-                "reason": (
-                    f"Recurring {freq} subscription of {'₹' if currency=='INR' else '$'}{amount} detected. "
-                    f"Risk level: {risk}. Creating autonomous smart contract with auto-cancel after 3 months, "
-                    f"auto-pause if inactive, and renewal alert 3 days before each cycle."
-                ),
+                "reasoning": [
+                    f"Recurring {freq} subscription detected (Risk: {risk})",
+                    "Classified as autonomous subscription contract",
+                    "Configured auto-cancel and auto-pause bounds"
+                ],
                 "contract_params": {
                     "duration_months": 3,
                     "auto_cancel": True,
@@ -255,6 +293,7 @@ def _mock_analysis(user_text: str) -> dict:
 
     for keyword, (name, amount, prev_amount, currency, due_offset) in BILLS.items():
         if keyword in text_lower:
+            amount, prev_amount = _extract_amts(keyword, amount, prev_amount, currency)
             curr_amt = float(amount)
             prev_amt = float(prev_amount)
             increase_pct = ((curr_amt - prev_amt) / prev_amt * 100) if prev_amt > 0 else 0
@@ -266,27 +305,29 @@ def _mock_analysis(user_text: str) -> dict:
 
             # Build reason with historical insight
             if is_abnormal and is_high_value:
-                reason = (
-                    f"⚠️ HIGH ALERT: {name} spiked {increase_pct:.0f}% from "
-                    f"₹{prev_amt:.0f} to ₹{curr_amt:.0f}. "
-                    f"Amount exceeds ₹2000 threshold. Immediate budget review recommended."
-                )
+                reasoning = [
+                    f"⚠️ HIGH ALERT: {increase_pct:.0f}% abnormal spike detected",
+                    f"Prior usage: ₹{prev_amt:.0f} → Current: ₹{curr_amt:.0f}",
+                    "Exceeds ₹2000 mandatory review threshold"
+                ]
             elif is_abnormal:
-                reason = (
-                    f"⚠️ Abnormal increase detected: {name} rose {increase_pct:.0f}% "
-                    f"from ₹{prev_amt:.0f} last month to ₹{curr_amt:.0f} this month. "
-                    f"Possible high-usage or billing error."
-                )
+                reasoning = [
+                    f"⚠️ Abnormal usage spike: {increase_pct:.0f}% higher than last month",
+                    f"Prior usage: ₹{prev_amt:.0f} → Current: ₹{curr_amt:.0f}",
+                    "Triggered bill verification rules"
+                ]
             elif is_high_value:
-                reason = (
-                    f"High-value bill: {name} is ₹{curr_amt:.0f}, exceeding the ₹2000 alert threshold. "
-                    f"No unusual spike vs last month (₹{prev_amt:.0f})."
-                )
+                reasoning = [
+                    f"High-value utility expense (₹{curr_amt:.0f})",
+                    "Exceeds standard ₹2000 monitoring threshold",
+                    "No abnormal spike vs previous period"
+                ]
             else:
-                reason = (
-                    f"Regular bill: {name} is ₹{curr_amt:.0f}, consistent with last month "
-                    f"(₹{prev_amt:.0f}). Due on {due_date}."
-                )
+                reasoning = [
+                    f"Nominal utility expense (₹{curr_amt:.0f})",
+                    f"Matched with historical usage (₹{prev_amt:.0f})",
+                    f"Due for settlement by {due_date}"
+                ]
 
             items.append({
                 "type": "bill",
@@ -302,7 +343,7 @@ def _mock_analysis(user_text: str) -> dict:
                 "is_abnormal": is_abnormal,
                 "increase_pct": round(increase_pct, 1),
                 "previous_amount": prev_amount,
-                "reason": reason,
+                "reasoning": reasoning,
                 "bill_params": {
                     "due_date": due_date,
                     "alert_threshold": 80,
@@ -328,25 +369,11 @@ def _mock_analysis(user_text: str) -> dict:
         "receipt":  ("Purchase",       "999",   "INR"),
     }
 
-    # Regex patterns to extract amount from raw text
-    INR_PATTERN = re.compile(r'[₹rR][sS]?\.?\s*(\d[\d,]*(?:\.\d{1,2})?)')
-    USD_PATTERN = re.compile(r'\$\s*(\d[\d,]*(?:\.\d{1,2})?)')
-
-    seen_purchase_keys: set = set()
+    seen_purchase_keys = set()
     for keyword, (name, default_amount, currency) in PURCHASES.items():
         if keyword in text_lower and keyword not in seen_purchase_keys:
             seen_purchase_keys.add(keyword)
-
-            # Try to extract amount from raw text around the keyword
-            amount = default_amount
-            if currency == "INR":
-                m = INR_PATTERN.search(user_text)
-                if m:
-                    amount = m.group(1).replace(",", "")
-            else:
-                m = USD_PATTERN.search(user_text)
-                if m:
-                    amount = m.group(1).replace(",", "")
+            amount, _ = _extract_amts(keyword, default_amount, "0", currency)
 
             purchase_ts = datetime.utcnow().isoformat() + "Z"
             items.append({
@@ -359,11 +386,11 @@ def _mock_analysis(user_text: str) -> dict:
                 "decision": "mint_nft",
                 "action": "mint_nft",
                 "risk": "low",
-                "reason": (
-                    f"One-time purchase of {'₹' if currency == 'INR' else '$'}{amount} detected. "
-                    f"Minting as ERC-721 NFT Receipt on Polkadot Hub EVM with 12-month warranty tracking "
-                    f"and immutable proof of ownership."
-                ),
+                "reasoning": [
+                    f"One-time asset purchase detected ({'₹' if currency == 'INR' else '$'}{amount})",
+                    "Eligible for ERC-721 Proof of Ownership receipt",
+                    "Activating 12-month automated warranty tracking"
+                ],
                 "nft_params": {
                     "item_name": name,
                     "warranty_months": 12,
@@ -386,7 +413,10 @@ def _mock_analysis(user_text: str) -> dict:
             "action": "create_subscription_contract",
             "duration": "3",
             "risk": "low",
-            "reason": "Demo mode: recurring payment pattern inferred. Creating autonomous contract.",
+            "reasoning": [
+                "Demo mode inferred unknown pattern",
+                "Defaulting to autonomous contract structure"
+            ],
             "contract_params": {
                 "duration_months": 3,
                 "auto_cancel": True,
@@ -399,10 +429,19 @@ def _mock_analysis(user_text: str) -> dict:
     n_bill = sum(1 for i in items if i["type"] == "bill")
     n_purch= sum(1 for i in items if i["type"] == "purchase")
 
+    # Final Deduplication pass for mock
+    seen = set()
+    deduped = []
+    for item in items:
+        key = (item.get("name", "").lower(), item.get("type", ""), item.get("amount", ""))
+        if key not in seen:
+            seen.add(key)
+            deduped.append(item)
+
     return {
         "success": True,
         "data": {
-            "items": items,
+            "items": deduped if deduped is not None else [],
             "summary": (
                 f"Found {n_sub} subscription(s), {n_bill} bill(s), {n_purch} purchase(s). "
                 f"Ready to execute {len(items)} blockchain action(s)."
