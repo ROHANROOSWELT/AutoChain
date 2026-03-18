@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #080d1a;
+    --bg-secondary: #0f172a;
+    --bg-card: #1e293b;
+    --accent: #6366f1;
+    --accent-glow: rgba(99, 102, 241, 0.3);
+  }
+  
+  body {
+    @apply bg-dark-950 text-slate-100 font-sans antialiased;
+    background: radial-gradient(ellipse at top, #1a0f3c 0%, #080d1a 60%);
+    min-height: 100vh;
+  }
+
+  * {
+    @apply box-border;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-dark-900;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-brand-700 rounded-full;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-2xl border border-white/5 backdrop-blur-sm;
+    background: rgba(30, 41, 59, 0.6);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 40px rgba(99, 102, 241, 0.15), inset 0 1px 0 rgba(255,255,255,0.07);
+    transition: all 0.3s ease;
+  }
+
+  .btn-primary {
+    @apply px-6 py-3 rounded-xl font-semibold text-white transition-all duration-200 
+           flex items-center gap-2 cursor-pointer;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(99, 102, 241, 0.6);
+  }
+
+  .btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+    transform: none;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 rounded-lg font-medium text-slate-300 border border-white/10 
+           hover:border-brand-500/50 hover:text-white transition-all duration-200 cursor-pointer;
+    background: rgba(30, 41, 59, 0.8);
+  }
+
+  .badge {
+    @apply px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide;
+  }
+
+  .badge-subscription {
+    @apply bg-violet-500/20 text-violet-300 border border-violet-500/30;
+  }
+
+  .badge-bill {
+    @apply bg-amber-500/20 text-amber-300 border border-amber-500/30;
+  }
+
+  .badge-purchase {
+    @apply bg-emerald-500/20 text-emerald-300 border border-emerald-500/30;
+  }
+
+  .section-title {
+    @apply text-xs font-semibold uppercase tracking-widest text-slate-500 mb-4;
+  }
+
+  .data-row {
+    @apply flex items-center justify-between py-2 border-b border-white/5 last:border-0;
+  }
+
+  .data-label {
+    @apply text-sm text-slate-500;
+  }
+
+  .data-value {
+    @apply text-sm text-slate-200 font-medium;
+  }
+
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-active {
+    @apply bg-emerald-400;
+    box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
+  }
+
+  .status-pending {
+    @apply bg-amber-400;
+    box-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+  }
+
+  .status-deployed {
+    @apply bg-brand-400;
+    box-shadow: 0 0 6px rgba(129, 140, 248, 0.6);
+  }
+
+  .address-chip {
+    @apply font-mono text-xs text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20;
+  }
+
+  .reasoning-box {
+    @apply p-3 rounded-lg border border-amber-500/20 bg-amber-500/5 text-sm text-amber-200;
+  }
+
+  .terminal-box {
+    @apply font-mono text-xs p-4 rounded-xl border border-white/5 bg-black/40 text-green-400;
+  }
+
+  .animate-enter {
+    animation: slideUp 0.4s ease-out;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(135deg, #818cf8, #a78bfa, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .glow-border {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+    border-color: rgba(99, 102, 241, 0.5) !important;
+  }
+
+  .neon-text {
+    text-shadow: 0 0 10px rgba(129, 140, 248, 0.8), 0 0 20px rgba(99, 102, 241, 0.4);
+  }
+}
