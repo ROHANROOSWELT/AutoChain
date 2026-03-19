@@ -182,7 +182,7 @@ export default function App() {
   const [signer, setSigner]             = useState(null)
   const [network, setNetwork]           = useState(null)  // 'sepolia' | 'wrong'
   const [contractAddress, setContractAddress] = useState(
-    () => localStorage.getItem('subscription_contract_addr') || null
+    () => localStorage.getItem('subscription_manager_v3') || null
   )
 
   const assetsRef = useRef(null)
@@ -324,7 +324,7 @@ export default function App() {
         await deployedContract.waitForDeployment()
         currentContractAddr = await deployedContract.getAddress()
         setContractAddress(currentContractAddr)
-        localStorage.setItem('subscription_contract_addr', currentContractAddr)
+        localStorage.setItem('subscription_manager_v3', currentContractAddr)
         addLog(`SubscriptionManager deployed: ${currentContractAddr.slice(0, 10)}...`, 'success')
         setTxStatus('confirmed')
         setTimeout(() => setTxStatus(null), 3000)
