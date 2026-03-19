@@ -8,8 +8,8 @@ const RISK_CONFIG = {
 }
 
 const ACTION_CONFIG = {
-  create_subscription_contract: { icon: '📄', label: 'Deploy Sub Contract', desc: 'Autonomous manager on Sepolia Testnet', color: '#34d399', itemBg: 'rgba(16,185,129,0.04)', itemBorder: 'rgba(16,185,129,0.15)' },
-  deploy_contract:               { icon: '📄', label: 'Deploy Contract',     desc: 'Autonomous contract on Sepolia EVM',   color: '#34d399', itemBg: 'rgba(16,185,129,0.04)', itemBorder: 'rgba(16,185,129,0.15)' },
+  create_subscription_contract: { icon: '📄', label: 'Deploy Sub Contract', desc: 'Autonomous manager on Polkadot Hub Testnet', color: '#34d399', itemBg: 'rgba(16,185,129,0.04)', itemBorder: 'rgba(16,185,129,0.15)' },
+  deploy_contract:               { icon: '📄', label: 'Deploy Contract',     desc: 'Autonomous contract on Polkadot Hub EVM',   color: '#34d399', itemBg: 'rgba(16,185,129,0.04)', itemBorder: 'rgba(16,185,129,0.15)' },
   track_bill:                    { icon: '📊', label: 'Track Bill',          desc: 'Due date + budget alerts',    color: '#fbbf24', itemBg: 'rgba(245,158,11,0.04)', itemBorder: 'rgba(245,158,11,0.15)' },
   bill_alert:                    { icon: '🔔', label: 'Bill Alert',          desc: 'Track with risk alert',       color: '#fbbf24', itemBg: 'rgba(245,158,11,0.04)', itemBorder: 'rgba(245,158,11,0.15)' },
   mint_nft:                      { icon: '🖼️', label: 'Mint NFT Receipt',   desc: 'ERC-721 proof + warranty',    color: '#34d399', itemBg: 'rgba(16,185,129,0.04)',  itemBorder: 'rgba(16,185,129,0.15)' },

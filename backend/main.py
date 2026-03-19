@@ -10,7 +10,6 @@ import time
 
 from ai_agent import analyze_text
 from automation import apply_rules
-from blockchain import execute_blockchain_action, get_all_assets, get_nft_by_id
 from config import add_simulated_days, reset_simulation
 
 app = FastAPI(
@@ -94,8 +93,7 @@ def execute(req: ExecuteRequest):
         # Apply automation rules
         automation_result = apply_rules(item)
         
-        # Execute blockchain action
-        blockchain_result = execute_blockchain_action(item, automation_result)
+        # Execute blockchain action -> REMOVED FOR POLKADOT HUB LIVE MIGRATION
         
         results.append({
             "item": {
@@ -107,19 +105,13 @@ def execute(req: ExecuteRequest):
             },
             "decision": item.get("decision"),
             "reasoning": item.get("reasoning"),
-            "automation": automation_result,
-            "blockchain": blockchain_result
+            "automation": automation_result
         })
     
-    successful = sum(1 for r in results if r["blockchain"].get("success"))
-    
     return {
-        "status": "executed",
+        "status": "prepared",
         "total_items": len(results),
-        "successful_actions": successful,
-        "failed_actions": len(results) - successful,
-        "results": results,
-        "network": "Sepolia Testnet (Real Blockchain)"
+        "results": results
     }
 
 
@@ -138,11 +130,10 @@ def pipeline(req: AnalyzeRequest):
     
     items = ai_result["data"].get("items", [])
     
-    # Step 2: Apply rules + Execute for each item
+        # Step 2: Apply rules
     execution_results = []
     for item in items:
         automation_result = apply_rules(item)
-        blockchain_result = execute_blockchain_action(item, automation_result)
         
         execution_results.append({
             "item": {
@@ -154,12 +145,10 @@ def pipeline(req: AnalyzeRequest):
             },
             "decision": item.get("decision"),
             "reasoning": item.get("reasoning"),
-            "automation": automation_result,
-            "blockchain": blockchain_result
+            "automation": automation_result
         })
     
     elapsed = round(time.time() - start, 2)
-    successful = sum(1 for r in execution_results if r["blockchain"].get("success"))
     
     return {
         "status": "pipeline_complete",
@@ -168,45 +157,9 @@ def pipeline(req: AnalyzeRequest):
         "autonomous_mode": req.autonomous_mode,
         "summary": ai_result["data"].get("summary"),
         "item_count": len(items),
-        "successful_actions": successful,
         "ai_extraction": ai_result["data"],
-        "execution_results": execution_results,
-        "network": "Sepolia Testnet (Real Blockchain)"
+        "execution_results": execution_results
     }
-
-
-@app.get("/assets")
-def get_assets():
-    """Get all deployed contracts, minted NFTs, and tracked bills."""
-    return get_all_assets()
-
-
-@app.get("/nft/{token_id}")
-def get_nft(token_id: int):
-    """Look up a specific minted NFT Receipt by token ID."""
-    nft = get_nft_by_id(token_id)
-    if not nft:
-        raise HTTPException(status_code=404, detail=f"NFT #{token_id} not found")
-    return {"status": "found", "nft": nft}
-
-
-@app.post("/simulate_time")
-def simulate_time():
-    """Fast-forwards the global clock to simulate subscription expiry and renewals."""
-    days = 90
-    new_offset = add_simulated_days(days)
-    return {
-        "status": "time_simulated",
-        "days_added": days,
-        "total_offset_days": new_offset,
-        "message": f"Global clock advanced by {days} days (3 months)"
-    }
-
-
-@app.post("/reset_time")
-def reset_time():
-    reset_simulation()
-    return {"status": "time_reset", "message": "Global clock reset to true current time."}
 
 
 @app.get("/health")

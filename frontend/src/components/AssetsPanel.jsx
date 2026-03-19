@@ -104,7 +104,7 @@ function NFTCard({ nft }) {
 
       {nft.tx_hash && (
         <a
-          href={`https://blockscout.polkadot.io/tx/${nft.tx_hash}`}
+          href={`https://blockscout-testnet.polkadot.io/tx/${nft.tx_hash}`}
           target="_blank"
           rel="noopener noreferrer"
           style={{
@@ -124,8 +124,8 @@ function NFTCard({ nft }) {
   )
 }
 
-/* ── Real Sepolia Tx Card (from localStorage) ─── */
-function SepoliaTxCard({ tx, contractAddress }) {
+/* ── Live On-Chain Tx Card (from localStorage) ─── */
+function LiveTxCard({ tx, contractAddress }) {
   const short = h => h ? `${h.slice(0, 10)}...${h.slice(-6)}` : ''
   const handleCopy = (h) => { navigator.clipboard.writeText(h); }
 
@@ -151,19 +151,22 @@ function SepoliaTxCard({ tx, contractAddress }) {
       </div>
 
       {tx.tx && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
           <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', width: '4rem', flexShrink: 0 }}>TX</span>
           <span style={{ fontSize: '0.6rem', fontFamily: 'JetBrains Mono, monospace', color: '#60a5fa' }}>{short(tx.tx)}</span>
           <button onClick={() => handleCopy(tx.tx)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.6rem', color: 'var(--text-muted)', padding: 0 }} title="Copy">📋</button>
-          <a href={`https://sepolia.etherscan.io/tx/${tx.tx}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.6rem', textDecoration: 'none' }} title="View on Etherscan">🔗</a>
+          <a href={`https://blockscout-testnet.polkadot.io/tx/${tx.tx}`} target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.55rem', marginLeft: 'auto' }}>View Transaction 🔗</a>
         </div>
       )}
-      {contractAddress && (
+      {(tx.contractAddress || contractAddress) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', width: '4rem', flexShrink: 0 }}>CONTRACT</span>
-          <span style={{ fontSize: '0.6rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)' }}>{short(contractAddress)}</span>
-          <button onClick={() => handleCopy(contractAddress)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.6rem', color: 'var(--text-muted)', padding: 0 }} title="Copy">📋</button>
-          <a href={`https://sepolia.etherscan.io/address/${contractAddress}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.6rem', textDecoration: 'none' }} title="View Contract">🔗</a>
+          <span style={{ fontSize: '0.6rem', fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-muted)' }}>{short(tx.contractAddress || contractAddress)}</span>
+          <button onClick={() => handleCopy(tx.contractAddress || contractAddress)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.6rem', color: 'var(--text-muted)', padding: 0 }} title="Copy">📋</button>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.55rem', fontWeight: 800, color: 'var(--text-muted)', opacity: 0.6 }}>Master</span>
+            <a href={`https://blockscout-testnet.polkadot.io/address/${tx.contractAddress || contractAddress}`} target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.55rem' }}>View Contract 🔗</a>
+          </div>
         </div>
       )}
     </div>
@@ -173,7 +176,7 @@ function SepoliaTxCard({ tx, contractAddress }) {
 const AssetsPanel = forwardRef(({ contractAddress, account, signer }, ref) => {
   const [assets, setAssets] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [sepoliaTxs, setSepoliaTxs] = useState([])
+  const [liveTxs, setLiveTxs] = useState([])
 
   const fetchAssets = async () => {
     setLoading(true)
@@ -187,12 +190,19 @@ const AssetsPanel = forwardRef(({ contractAddress, account, signer }, ref) => {
     }
   }
 
-  const loadSepoliaTxs = () => {
+  const loadLiveTxs = () => {
     try {
       const txLog = JSON.parse(localStorage.getItem('autochain_tx_log') || '[]')
-      setSepoliaTxs(Array.isArray(txLog) ? txLog : [])
+      setLiveTxs(Array.isArray(txLog) ? txLog : [])
     } catch {
-      setSepoliaTxs([])
+      setLiveTxs([])
+    }
+  }
+
+  const clearHistory = () => {
+    if (window.confirm('Are you sure you want to clear your local on-chain transaction history? This will not affect the actual blockchain.')) {
+      localStorage.removeItem('autochain_tx_log')
+      setLiveTxs([])
     }
   }
 
@@ -200,12 +210,26 @@ const AssetsPanel = forwardRef(({ contractAddress, account, signer }, ref) => {
     fetchAssets
   }))
 
-  useEffect(() => { fetchAssets(); loadSepoliaTxs() }, [])
+  useEffect(() => { fetchAssets(); loadLiveTxs() }, [])
 
   // Re-check localStorage whenever contractAddress changes (new tx added)
-  useEffect(() => { loadSepoliaTxs() }, [contractAddress])
+  useEffect(() => { loadLiveTxs() }, [contractAddress])
 
   const totalAssets = (assets?.total_contracts || 0) + (assets?.total_nfts || 0)
+
+  if (!account) {
+    return (
+      <div className="glass-card" style={{ padding: '3rem 1.5rem', textAlign: 'center', borderColor: 'var(--border-base)' }}>
+        <div style={{ fontSize: '3rem', opacity: 0.2, marginBottom: '1rem' }}>🦊</div>
+        <p style={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0 }}>
+          Wallet Disconnected
+        </p>
+        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontWeight: 400 }}>
+          Connect MetaMask to view your live on-chain assets and transaction history.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="glass-card" style={{ padding: '1.75rem', borderColor: 'rgba(16,185,129,0.1)' }}>
@@ -217,7 +241,7 @@ const AssetsPanel = forwardRef(({ contractAddress, account, signer }, ref) => {
             Managed Assets
           </h2>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', fontWeight: 400 }}>
-            On-chain assets · Ethereum Sepolia Testnet
+            On-chain assets · Polkadot Hub Testnet
           </p>
         </div>
         <button
@@ -234,30 +258,43 @@ const AssetsPanel = forwardRef(({ contractAddress, account, signer }, ref) => {
         >
           <span style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }}>🔄</span>
         </button>
+        <button
+          onClick={clearHistory}
+          className="btn-secondary"
+          style={{
+            height: '2.5rem', borderRadius: '0.75rem',
+            padding: '0 1rem', fontSize: '0.65rem', fontWeight: 800,
+            letterSpacing: '0.1em', textTransform: 'uppercase',
+            color: '#f87171', borderColor: 'rgba(239,68,68,0.2)',
+            marginLeft: '0.5rem'
+          }}
+        >
+          Hard Reset
+        </button>
       </div>
 
-      {/* Real Sepolia On-Chain Transactions from localStorage */}
-      {sepoliaTxs.length > 0 && (
+      {/* Real Live On-Chain Transactions from localStorage */}
+      {liveTxs.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: totalAssets > 0 ? '0' : '0' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="section-label">Real Sepolia Transactions</span>
+              <span className="section-label">Live On-Chain Transactions</span>
               <span style={{
                 fontSize: '0.55rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em',
                 color: '#34d399', padding: '0.15rem 0.5rem', borderRadius: '99px',
                 background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)',
               }}>
-                {sepoliaTxs.length} on-chain
+                {liveTxs.length} on-chain
               </span>
             </div>
-            {sepoliaTxs.slice().reverse().map((tx, i) => (
-              <SepoliaTxCard key={i} tx={tx} contractAddress={contractAddress} />
+            {liveTxs.slice().reverse().map((tx, i) => (
+              <LiveTxCard key={i} tx={tx} contractAddress={contractAddress} />
             ))}
           </div>
         </div>
       )}
 
-      {totalAssets === 0 && sepoliaTxs.length === 0 ? (
+      {totalAssets === 0 && liveTxs.length === 0 ? (
         <div style={{
           textAlign: 'center', padding: '3rem 1.5rem', borderRadius: '1.25rem',
           border: '2px dashed var(--border-base)', background: 'var(--bg-overlay)',

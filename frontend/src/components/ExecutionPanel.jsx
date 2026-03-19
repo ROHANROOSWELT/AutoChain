@@ -21,13 +21,13 @@ function TxChip({ hash }) {
       </button>
       {hash.startsWith('0x') && (
         <a 
-          href={`https://sepolia.etherscan.io/tx/${hash}`} 
+          href={`https://blockscout-testnet.polkadot.io/tx/${hash}`} 
           target="_blank" 
           rel="noopener noreferrer"
-          style={{ textDecoration: 'none', fontSize: '0.7rem' }}
-          title="View on Etherscan"
+          className="btn-secondary"
+          style={{ padding: '0.3rem 0.8rem', fontSize: '0.65rem' }}
         >
-          🔗
+          View Transaction 🔗
         </a>
       )}
     </div>

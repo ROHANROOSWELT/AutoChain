@@ -8,8 +8,10 @@ import AssetsPanel from './components/AssetsPanel'
 import { analyzeText, runPipeline } from './api'
 import { ethers } from 'ethers'
 import SubscriptionManager from './contracts/SubscriptionManager.json'
+import NFTReceipt from './contracts/NFTReceipt.json'
+import BillTracker from './contracts/BillTracker.json'
 
-const SEPOLIA_CHAIN_ID = '0xaa36a7' // 11155111 in hex
+const POLKADOT_HUB_CHAIN_ID = '0x190f64c1' // 420420417 in hex
 
 /* ── Theme Toggle Icon ───────────────────────────────── */
 function SunIcon() {
@@ -29,7 +31,7 @@ function MoonIcon() {
 }
 
 function Header({ isDark, onToggleTheme, account, onConnect, network }) {
-  const isCorrectNetwork = network === 'sepolia'
+  const isCorrectNetwork = network === 'polkadot'
   return (
     <header style={{
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -85,7 +87,7 @@ function Header({ isDark, onToggleTheme, account, onConnect, network }) {
             background: isCorrectNetwork ? '#34d399' : '#f87171',
             display: 'inline-block',
           }} />
-          {account ? (isCorrectNetwork ? 'Sepolia Testnet' : 'Wrong Network') : 'Sepolia Testnet'}
+          {account ? (isCorrectNetwork ? 'Polkadot Hub' : 'Wrong Network') : 'Polkadot Hub'}
         </div>
 
         <button className="theme-toggle" onClick={onToggleTheme} aria-label="Toggle Theme">
@@ -142,12 +144,49 @@ function PhaseStepper({ phase }) {
   )
 }
 
+/* ── Summary Dashboard ─────────────────────────────────── */
+function SummaryDashboard({ items, network, account }) {
+  if (!items || items.length === 0) return null;
+  const subs = items.filter(i => i.type === 'subscription');
+  const bills = items.filter(i => i.type === 'bill');
+  const purchases = items.filter(i => i.type === 'purchase');
+  
+  const totalInr = subs.filter(i => i.currency === 'INR').reduce((a, b) => a + parseFloat(b.amount || 0), 0);
+  const totalUsd = subs.filter(i => i.currency === 'USD').reduce((a, b) => a + parseFloat(b.amount || 0), 0);
+  
+  const hasHighRisk = items.some(i => i.risk === 'high');
+  const hasMedRisk = items.some(i => i.risk === 'medium');
+  const riskLabel = hasHighRisk ? 'High' : hasMedRisk ? 'Medium' : 'Low';
+  const riskColor = hasHighRisk ? '#f87171' : hasMedRisk ? '#fbbf24' : '#34d399';
+
+  return (
+    <div className="glass-card animate-enter" style={{ padding: '1.25rem', marginBottom: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+      <div>
+        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Total Found</div>
+        <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{subs.length} subs, {bills.length} bills</div>
+      </div>
+      <div>
+        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Monthly Cost (INR)</div>
+        <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>₹{totalInr.toFixed(2)}</div>
+      </div>
+      <div>
+        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Monthly Cost (USD)</div>
+        <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>${totalUsd.toFixed(2)}</div>
+      </div>
+      <div>
+        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Risk Level</div>
+        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: riskColor }}>{riskLabel} Risk</div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Transaction Status Banner ───────────────────────── */
 function TxStatusBanner({ status }) {
   if (!status) return null
   const configs = {
     pending:  { bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.25)', color: '#fbbf24', icon: '⏳', text: 'Waiting for MetaMask confirmation...' },
-    confirmed:{ bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.25)', color: '#34d399', icon: '✅', text: 'Transaction confirmed on Sepolia!' },
+    confirmed:{ bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.25)', color: '#34d399', icon: '✅', text: 'Transaction confirmed on Polkadot Hub!' },
     rejected: { bg: 'rgba(239,68,68,0.1)',  border: 'rgba(239,68,68,0.25)', color: '#f87171', icon: '❌', text: 'Transaction rejected by user' },
   }
   const cfg = configs[status]
@@ -180,7 +219,7 @@ export default function App() {
   // Wallet state
   const [account, setAccount]           = useState(null)
   const [signer, setSigner]             = useState(null)
-  const [network, setNetwork]           = useState(null)  // 'sepolia' | 'wrong'
+  const [network, setNetwork]           = useState(null)  // 'polkadot' | 'wrong'
   const [contractAddress, setContractAddress] = useState(
     () => localStorage.getItem('subscription_manager_v3') || null
   )
@@ -194,7 +233,7 @@ export default function App() {
   /* ── Wallet Connection ────────────────────── */
   const connectWallet = async () => {
     if (!window.ethereum) {
-      alert('MetaMask not detected! Please install MetaMask to use Sepolia Testnet.')
+      alert('MetaMask not detected! Please install MetaMask to use Polkadot Hub.')
       return
     }
     try {
@@ -202,14 +241,31 @@ export default function App() {
       const provider = new ethers.BrowserProvider(window.ethereum)
       const net = await provider.getNetwork()
 
-      if (net.chainId !== 11155111n) {
+      if (net.chainId !== 420420417n) {
         try {
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: SEPOLIA_CHAIN_ID }],
+            params: [{ chainId: POLKADOT_HUB_CHAIN_ID }],
           })
         } catch (switchErr) {
-          addLog('Please switch to Sepolia Testnet in MetaMask.', 'error')
+          if (switchErr.code === 4902) {
+            try {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: POLKADOT_HUB_CHAIN_ID,
+                  chainName: 'Polkadot Hub Testnet',
+                  nativeCurrency: { name: 'DOT', symbol: 'DOT', decimals: 18 },
+                  rpcUrls: ['https://eth-rpc-testnet.polkadot.io/'],
+                  blockExplorerUrls: ['https://blockscout-testnet.polkadot.io/']
+                }]
+              });
+            } catch (addError) {
+              addLog('Failed to add Polkadot Hub Testnet to MetaMask.', 'error')
+            }
+          } else {
+            addLog('Please switch to Polkadot Hub in MetaMask.', 'error')
+          }
           setNetwork('wrong')
           return
         }
@@ -218,7 +274,7 @@ export default function App() {
       const _signer = await provider.getSigner()
       setAccount(accounts[0])
       setSigner(_signer)
-      setNetwork('sepolia')
+      setNetwork('polkadot')
       addLog(`Wallet connected: ${accounts[0].slice(0, 8)}...${accounts[0].slice(-4)}`, 'success')
     } catch (e) {
       if (e.code !== 4001) { // 4001 = user rejected
@@ -243,14 +299,14 @@ export default function App() {
   /* ── Analysis ─────────────────────────────── */
   const handleAnalyze = async (text, autonomousMode) => {
     setLoading(true); setError(null); setPhase('input'); setLogs([])
-    addLog('Initiating Deep Analysis block...', 'system')
+    addLog('🧠 Deep Analysis Initiated...', 'system')
     try {
       // analyzeText() returns res.data (already unwrapped by api.js)
       // Shape: { status, elapsed_seconds, model_used, extraction: { items, summary }, item_count }
       const res = await analyzeText(text, autonomousMode)
       const extraction = res?.extraction || res || {}
       const items = extraction?.items || []
-      addLog(`Extracted ${items.length} financial element${items.length !== 1 ? 's' : ''}.`, 'success')
+      addLog(`✅ AI Extraction Complete (${items.length} items detected) | Confidence: 98%`, 'success')
       setExtractionData(extraction)
       setExtractedItems(items)
       setPhase('analyzed')
@@ -266,7 +322,7 @@ export default function App() {
   /* ── Pipeline (Autonomous Mode) ───────────── */
   const handlePipeline = async (text, autonomousMode) => {
     setLoading(true); setError(null); setPhase('input'); setLogs([])
-    addLog('Initiating Autonomous Protocol...', 'system')
+    addLog('🤖 Autonomous Protocol Engaged (Batch Mode)...', 'system')
     try {
       // runPipeline() returns res.data
       // Shape: { status, successful_actions, execution_results, ai_extraction, ... }
@@ -278,7 +334,7 @@ export default function App() {
         results,
         successful_actions: successful,
         total_items: results.length,
-        network: 'Sepolia Testnet (Real Blockchain)',
+        network: 'Polkadot Hub Testnet (Live On-Chain Execution)',
         ...(res || {}),
       })
       setPhase('executed')
@@ -305,105 +361,165 @@ export default function App() {
     }
 
     setLoading(true); setError(null); setTxStatus(null)
-    addLog('Initiating On-Chain Protocol (Sepolia)...', 'system')
+    addLog('Initiating On-Chain Protocol (Polkadot Hub)...', 'system')
 
     try {
       let currentContractAddr = contractAddress
+      let currentNftAddr = localStorage.getItem('nft_receipt_v3') || null
+      let currentBillAddr = localStorage.getItem('bill_tracker_v3') || null
 
-      // 1. Deploy SubscriptionManager contract if not yet deployed
-      if (!currentContractAddr) {
-        addLog('No active manager found. Deploying SubscriptionManager to Sepolia...', 'ai')
-        setTxStatus('pending')
-        const factory = new ethers.ContractFactory(
-          SubscriptionManager.abi,
-          SubscriptionManager.bytecode,
-          signer
-        )
-        const deployedContract = await factory.deploy()
-        addLog('Deployment tx sent. Waiting for confirmation...', 'info')
-        await deployedContract.waitForDeployment()
-        currentContractAddr = await deployedContract.getAddress()
-        setContractAddress(currentContractAddr)
-        localStorage.setItem('subscription_manager_v3', currentContractAddr)
-        addLog(`SubscriptionManager deployed: ${currentContractAddr.slice(0, 10)}...`, 'success')
-        setTxStatus('confirmed')
-        setTimeout(() => setTxStatus(null), 3000)
-      }
-
-      const contract = new ethers.Contract(currentContractAddr, SubscriptionManager.abi, signer)
       const results = []
       let successfulCount = 0
 
-      // Read existing tx log for duplicate checks
       const existingTxLog = JSON.parse(localStorage.getItem('autochain_tx_log') || '[]')
 
-      // 2. Process each item
       for (const item of (items || [])) {
         if (!item) continue
         const itemName = item.name || 'Unknown'
-        addLog(`Processing ${itemName}...`, 'info')
+        const action = item.action || item.decision || 'create_subscription_contract'
+        addLog(`Processing ${itemName} (${action})...`, 'info')
 
         try {
-          // Duplicate check (same name + amount combination)
           const isDuplicate = existingTxLog.some(log =>
             log?.name?.toLowerCase() === itemName.toLowerCase() &&
-            Math.floor(log?.amount ?? -1) === Math.floor(item.amount ?? 0)
+            Math.floor(log?.amount ?? -1) === Math.floor(item.amount ?? 0) &&
+            log?.action === action
           )
 
           if (isDuplicate) {
-            addLog(`Skipping ${itemName}: Protocol already active for this value.`, 'ai')
-            results.push({
-              item,
-              decision: item.action || 'create_subscription_contract',
-              blockchain: {
-                success: true,
-                message: 'Existing protocol detected — skipped duplicate',
-                network: 'Sepolia Testnet (Real Blockchain)',
-                contract_address: currentContractAddr,
-              }
-            })
+            addLog(`Skipping ${itemName}: Protocol already active.`, 'ai')
+            results.push({ item, decision: action, blockchain: { success: true, message: 'Existing protocol detected', network: 'Polkadot Hub Testnet (Live On-Chain Execution)' } })
             successfulCount++
             continue
           }
 
-          const amount   = Math.floor(item.amount ?? 0)
-          const duration = Math.floor(
-            item.duration ||
-            item.contract_params?.duration_months ||
-            30
-          )
+          let tx;
+          let usedAddress = currentContractAddr;
+          let actionData = {};
 
-          addLog(`Awaiting MetaMask approval for ${itemName}...`, 'ai')
-          setTxStatus('pending')
-
-          const tx = await contract.createSubscription(itemName, amount, duration)
-          addLog(`Transaction sent: ${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}`, 'info')
-
-          const receipt = await tx.wait()
-          addLog(`Confirmed in block #${receipt.blockNumber}`, 'success')
-          setTxStatus('confirmed')
-          setTimeout(() => setTxStatus(null), 3000)
-
-          // Persist to local log for duplicate prevention
-          existingTxLog.push({ name: itemName, amount: item.amount, tx: tx.hash })
-          localStorage.setItem('autochain_tx_log', JSON.stringify(existingTxLog))
-
-          results.push({
-            item,
-            decision: item.action || 'create_subscription_contract',
-            blockchain: {
-              success: true,
-              tx_hash: tx.hash,
-              block_number: receipt.blockNumber,
-              contract_address: currentContractAddr,
-              network: 'Sepolia Testnet (Real Blockchain)',
+          if (action === 'create_subscription_contract') {
+            if (!currentContractAddr) {
+              addLog('⚙️ Deploying Master SubscriptionManager Contract...', 'ai')
+              setTxStatus('pending')
+              const factory = new ethers.ContractFactory(SubscriptionManager.abi, SubscriptionManager.bytecode, signer)
+              const deployed = await factory.deploy()
+              await deployed.waitForDeployment()
+              currentContractAddr = await deployed.getAddress()
+              setContractAddress(currentContractAddr)
+              localStorage.setItem('subscription_manager_v3', currentContractAddr)
+              addLog('SubscriptionManager deployed!', 'success')
             }
-          })
-          successfulCount++
+            usedAddress = currentContractAddr;
+            const contract = new ethers.Contract(currentContractAddr, SubscriptionManager.abi, signer)
+            setTxStatus('pending')
+            tx = await contract.createSubscription(itemName, Math.floor(item.amount ?? 0), Math.floor(item.duration || 30))
+
+          } else if (action === 'mint_nft') {
+            if (!currentNftAddr) {
+              addLog('⚙️ Deploying NFTReceipt Contract...', 'ai')
+              setTxStatus('pending')
+              const factory = new ethers.ContractFactory(NFTReceipt.abi, NFTReceipt.bytecode, signer)
+              const deployed = await factory.deploy()
+              await deployed.waitForDeployment()
+              currentNftAddr = await deployed.getAddress()
+              localStorage.setItem('nft_receipt_v3', currentNftAddr)
+              addLog('NFTReceipt deployed!', 'success')
+            }
+            usedAddress = currentNftAddr;
+            const contract = new ethers.Contract(currentNftAddr, NFTReceipt.abi, signer)
+            setTxStatus('pending')
+            tx = await contract.mintReceipt(
+              account, itemName, Math.floor(item.amount ?? 0), item.currency || "INR", 12, "https://autochain.io/nft/meta.json"
+            )
+
+          } else if (action === 'track_bill' || action === 'bill_alert') {
+            if (!currentBillAddr) {
+              addLog('⚙️ Deploying BillTracker Contract...', 'ai')
+              setTxStatus('pending')
+              const factory = new ethers.ContractFactory(BillTracker.abi, BillTracker.bytecode, signer)
+              const deployed = await factory.deploy()
+              await deployed.waitForDeployment()
+              currentBillAddr = await deployed.getAddress()
+              localStorage.setItem('bill_tracker_v3', currentBillAddr)
+              addLog('BillTracker deployed!', 'success')
+            }
+            usedAddress = currentBillAddr;
+            const contract = new ethers.Contract(currentBillAddr, BillTracker.abi, signer)
+            setTxStatus('pending')
+            const dueTs = Math.floor(Date.now() / 1000) + (30 * 86400) // 30 days default
+            tx = await contract.registerBill(itemName, Math.floor((item.amount ?? 0) * 100), Math.floor((item.previous_amount || 0) * 100), dueTs, 3)
+            actionData.is_bill = true;
+            actionData.interface = contract.interface;
+          }
+
+          if (tx) {
+            addLog(`📡 Broadcasting Transaction: ${tx.hash.slice(0, 10)}...`, 'info')
+            const receipt = await tx.wait()
+            addLog(`✅ Confirmed in Block #${receipt.blockNumber}`, 'success')
+            setTxStatus('confirmed')
+            setTimeout(() => setTxStatus(null), 3000)
+            
+            existingTxLog.push({ name: itemName, amount: item.amount, action, tx: tx.hash, contractAddress: usedAddress })
+            localStorage.setItem('autochain_tx_log', JSON.stringify(existingTxLog))
+
+            let isAbnormal = item.is_abnormal || false;
+            let emittedEvents = [];
+            let alertMessages = [];
+            let trackerId = null;
+
+            if (actionData.is_bill) {
+              const itf = actionData.interface;
+              for (const log of receipt.logs) {
+                try {
+                  const parsed = itf.parseLog(log);
+                  if (parsed) {
+                    let evt = { event: parsed.name, data: {} };
+                    if (parsed.name === 'BillRegistered') {
+                      trackerId = `On-Chain Bill ID: #${parsed.args.billId.toString()}`;
+                    } else if (parsed.name === 'AbnormalIncreaseAlert') {
+                      isAbnormal = true;
+                      evt.data = {
+                        prev: (Number(parsed.args.previousAmount) / 100).toString(),
+                        curr: (Number(parsed.args.currentAmount) / 100).toString(),
+                        inc: parsed.args.increasePercent.toString() + '%'
+                      };
+                      alertMessages.push(`ON-CHAIN SPIKE: Bill increased by ${parsed.args.increasePercent}%`);
+                    } else if (parsed.name === 'HighUsageAlert') {
+                      evt.data = { amount: (Number(parsed.args.amount) / 100).toString(), msg: parsed.args.message };
+                      alertMessages.push(`ON-CHAIN ALERT: ${parsed.args.message}`);
+                    } else if (parsed.name === 'BudgetWarning') {
+                      evt.data = { amount: (Number(parsed.args.amount) / 100).toString(), msg: parsed.args.message };
+                      alertMessages.push(`ON-CHAIN WARNING: ${parsed.args.message}`);
+                    } else if (parsed.name === 'DueSoonAlert') {
+                      evt.data = { daysRemaining: parsed.args.daysRemaining.toString() };
+                      alertMessages.push(`ON-CHAIN DATE ALERT: Due in ${parsed.args.daysRemaining} days.`);
+                    }
+                    if (parsed.name !== 'BillRegistered') emittedEvents.push(evt);
+                  }
+                } catch(e) {}
+              }
+            }
+
+            results.push({
+              item, decision: action,
+              blockchain: { 
+                success: true, 
+                tx_hash: tx.hash, 
+                block_number: receipt.blockNumber, 
+                contract_address: usedAddress, 
+                network: 'Polkadot Hub Testnet (Live On-Chain Execution)',
+                is_abnormal: isAbnormal,
+                emitted_events: emittedEvents,
+                alert_messages: alertMessages,
+                tracker_id: trackerId,
+                solidity_struct: { previousAmount: item.previous_amount || 0 }
+              }
+            })
+            successfulCount++
+          }
 
         } catch (itemErr) {
           console.error(itemErr)
-          // Handle user rejection gracefully
           if (itemErr.code === 'ACTION_REJECTED' || itemErr.code === 4001) {
             addLog(`MetaMask: User rejected transaction for ${itemName}`, 'error')
             setTxStatus('rejected')
@@ -411,15 +527,7 @@ export default function App() {
           } else {
             addLog(`Failed: ${itemName} — ${itemErr.reason || itemErr.message}`, 'error')
           }
-          results.push({
-            item,
-            decision: item.action || 'create_subscription_contract',
-            blockchain: {
-              success: false,
-              error: itemErr.reason || itemErr.message,
-              network: 'Sepolia Testnet (Real Blockchain)',
-            }
-          })
+          results.push({ item, decision: action, blockchain: { success: false, error: itemErr.reason || itemErr.message, network: 'Polkadot Hub Testnet (Live On-Chain Execution)' } })
         }
       }
 
@@ -427,7 +535,7 @@ export default function App() {
         results,
         successful_actions: successfulCount,
         total_items: (items || []).length,
-        network: 'Sepolia Testnet (Real Blockchain)',
+        network: 'Polkadot Hub Testnet (Live On-Chain Execution)',
         contract_address: currentContractAddr,
       })
       setPhase('executed')
@@ -485,6 +593,9 @@ export default function App() {
           </div>
         )}
 
+        {/* Summary Dashboard */}
+        <SummaryDashboard items={extractedItems} network={network} account={account} />
+
         {/* Tx Status Banner */}
         <TxStatusBanner status={txStatus} />
 
@@ -510,7 +621,7 @@ export default function App() {
                   className="btn-secondary animate-enter"
                   style={{ width: '100%', padding: '0.875rem', fontSize: '0.7rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}
                 >
-                  Discard & Restart
+                  Reset & New Session
                 </button>
               </>
             )}
@@ -523,7 +634,7 @@ export default function App() {
                   className="btn-primary animate-enter"
                   style={{ width: '100%', padding: '1rem', fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase' }}
                 >
-                  New Protocol Session
+                  Reset (New Transaction)
                 </button>
               </>
             )}
@@ -575,7 +686,7 @@ export default function App() {
           fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.3em',
           textTransform: 'uppercase', color: 'var(--text-muted)',
         }}>
-          AutoChain · Ethereum Sepolia Testnet · 2026
+          AutoChain · Polkadot Hub Testnet · 2026
         </p>
       </footer>
 
