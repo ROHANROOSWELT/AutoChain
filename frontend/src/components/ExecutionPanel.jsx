@@ -149,9 +149,31 @@ function ExecutionCard({ result }) {
   )
 }
 
+import { simulateForward, resetSimulation } from '../api'
+
 export default function ExecutionPanel({ executionData }) {
   if (!executionData) return null
   const { results = [], successful_actions, total_items, network } = executionData
+
+  const handleFastForward = async () => {
+    try {
+      await simulateForward(30)
+      alert("Fast-forwarded 30 days! Run 'Analyze' again to see updated protocol states.")
+    } catch (err) {
+      console.error(err)
+      alert("Simulation failed")
+    }
+  }
+
+  const handleReset = async () => {
+    try {
+      await resetSimulation()
+      alert("Simulation reset to real-time.")
+    } catch (err) {
+      console.error(err)
+      alert("Reset failed")
+    }
+  }
 
   return (
     <div className="glass-card animate-enter" style={{ padding: '1.75rem', borderColor: 'rgba(16,185,129,0.12)' }}>
@@ -162,9 +184,14 @@ export default function ExecutionPanel({ executionData }) {
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
             On-Chain Results
           </h2>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', fontWeight: 400 }}>
-            {network}
-          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <button onClick={handleFastForward} className="btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem' }}>
+              ⏩ Fast Forward 30 Days
+            </button>
+            <button onClick={handleReset} className="btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem', opacity: 0.6 }}>
+              🔄 Reset Time
+            </button>
+          </div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#34d399', letterSpacing: '-0.05em', lineHeight: 1, textShadow: '0 4px 12px rgba(52,211,153,0.2)' }}>

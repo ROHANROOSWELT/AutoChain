@@ -5,7 +5,7 @@ import ExecutionPanel from './components/ExecutionPanel'
 import BillsPanel from './components/BillsPanel'
 import NFTPanel from './components/NFTPanel'
 import AssetsPanel from './components/AssetsPanel'
-import { analyzeText, runPipeline } from './api'
+import { analyzeText, executeItems, runPipeline, simulateForward, resetSimulation, sendTransactionReceiptEmail } from './api'
 import { ethers } from 'ethers'
 import SubscriptionManager from './contracts/SubscriptionManager.json'
 import NFTReceipt from './contracts/NFTReceipt.json'
@@ -88,6 +88,35 @@ function Header({ isDark, onToggleTheme, account, onConnect, network }) {
             display: 'inline-block',
           }} />
           {account ? (isCorrectNetwork ? 'Polkadot Hub' : 'Wrong Network') : 'Polkadot Hub'}
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.4rem', marginRight: '1rem' }}>
+          <button 
+            onClick={async () => {
+              try {
+                await simulateForward(30);
+                alert("Fast-forwarded 30 days! Syncing protocols...");
+                window.location.reload(); // Simple sync
+              } catch(e) { alert("Simulation failed") }
+            }} 
+            className="btn-secondary" 
+            style={{ fontSize: '0.6rem', padding: '0.3rem 0.6rem', background: 'rgba(52,211,153,0.1)' }}
+          >
+            ⏩ +30 Days
+          </button>
+          <button 
+            onClick={async () => {
+              try {
+                await resetSimulation();
+                alert("Time reset.");
+                window.location.reload();
+              } catch(e) { alert("Reset failed") }
+            }} 
+            className="btn-secondary" 
+            style={{ fontSize: '0.6rem', padding: '0.3rem 0.6rem', opacity: 0.6 }}
+          >
+            🔄 Reset
+          </button>
         </div>
 
         <button className="theme-toggle" onClick={onToggleTheme} aria-label="Toggle Theme">
@@ -371,6 +400,13 @@ export default function App() {
       const results = []
       let successfulCount = 0
 
+      // 🔥 FIX: Persist to backend history so simulation works!
+      try {
+        await executeItems(items);
+      } catch (e) {
+        console.error("Backend history sync failed:", e);
+      }
+
       const existingTxLog = JSON.parse(localStorage.getItem('autochain_tx_log') || '[]')
 
       for (const item of (items || [])) {
@@ -380,18 +416,7 @@ export default function App() {
         addLog(`Processing ${itemName} (${action})...`, 'info')
 
         try {
-          const isDuplicate = existingTxLog.some(log =>
-            log?.name?.toLowerCase() === itemName.toLowerCase() &&
-            Math.floor(log?.amount ?? -1) === Math.floor(item.amount ?? 0) &&
-            log?.action === action
-          )
-
-          if (isDuplicate) {
-            addLog(`Skipping ${itemName}: Protocol already active.`, 'ai')
-            results.push({ item, decision: action, blockchain: { success: true, message: 'Existing protocol detected', network: 'Polkadot Hub Testnet (Live On-Chain Execution)' } })
-            successfulCount++
-            continue
-          }
+          // REMOVED duplicate skip for demo flexibility
 
           let tx;
           let usedAddress = currentContractAddr;
@@ -458,6 +483,13 @@ export default function App() {
             addLog(`✅ Confirmed in Block #${receipt.blockNumber}`, 'success')
             setTxStatus('confirmed')
             setTimeout(() => setTxStatus(null), 3000)
+            
+            // Send email receipt
+            try {
+              await sendTransactionReceiptEmail(item, tx.hash)
+            } catch (err) {
+              console.error("Email receipt failed:", err)
+            }
             
             existingTxLog.push({ name: itemName, amount: item.amount, action, tx: tx.hash, contractAddress: usedAddress })
             localStorage.setItem('autochain_tx_log', JSON.stringify(existingTxLog))

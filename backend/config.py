@@ -1,4 +1,7 @@
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 TIME_OFFSET_DAYS = 0
 

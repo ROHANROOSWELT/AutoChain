@@ -121,10 +121,10 @@ OUTPUT FORMAT (strict JSON):
       "raw_text": "",
       "decision": "create_subscription_contract | track_bill | mint_nft",
       "action": "create_subscription_contract | track_bill | mint_nft",
-      "duration": "<months if subscription, else null>",
+      "duration": "<INTEGER months — REQUIRED for subscriptions. Parse from text: '3 months'→3, '6 months'→6, '1 year'→12, '2 years'→24. Default to 1 if monthly with no explicit duration stated.>",
       "risk": "low | medium | high | normal",
       "reasoning": ["<sentence 1>", "<sentence 2>"],
-      "contract_params": { "duration_months": 3, "auto_cancel": true, "auto_pause_if_inactive": true, "alert_days_before": 3 },
+      "contract_params": { "duration_months": "<same integer as duration>", "auto_cancel": true, "auto_pause_if_inactive": true, "alert_days_before": 3 },
       "bill_params": { "due_date": null, "alert_threshold": 80, "budget_limit": null },
       "nft_params": { "item_name": "", "warranty_months": 12 }
     }
@@ -132,6 +132,12 @@ OUTPUT FORMAT (strict JSON):
   "summary": "Found X subscription(s), Y bill(s), Z purchase(s). Ready to execute N blockchain action(s).",
   "autonomous_recommended": true
 }
+
+EXAMPLES for duration extraction:
+- "subscribed netflix for 499 for 3 months" → duration: 3, contract_params.duration_months: 3
+- "spotify monthly" → duration: 1, contract_params.duration_months: 1
+- "amazon prime for 1 year" → duration: 12, contract_params.duration_months: 12
+- "youtube premium 6 months" → duration: 6, contract_params.duration_months: 6
 
 SUBSCRIPTION risk: amount < 200 INR/$5 = low, 200-1000 INR/$5-25 = medium, >1000 INR/$25 = high
 BILL risk: normal unless amount > 2000 INR/$50 → high
@@ -203,6 +209,25 @@ def _risk_for_amount(amount_str: str, currency: str) -> str:
         return "high"
 
 
+# Regex to extract duration mentioned in natural language
+_DURATION_PATTERNS = [
+    re.compile(r'(\d+)\s*-?\s*year', re.IGNORECASE),   # "1 year", "2-year"
+    re.compile(r'(\d+)\s*month', re.IGNORECASE),         # "3 months", "6month"
+]
+
+def _extract_duration_months(text: str) -> int:
+    """Extract subscription duration in months from natural language text."""
+    for pattern in _DURATION_PATTERNS:
+        m = pattern.search(text)
+        if m:
+            n = int(m.group(1))
+            # If it matched a 'year' pattern, convert to months
+            if 'year' in pattern.pattern:
+                return n * 12
+            return n
+    return 1  # Default: 1-month (monthly, no explicit duration given)
+
+
 def _mock_analysis(user_text: str) -> dict:
     text_lower = user_text.lower()
     items: list[dict] = []
@@ -225,7 +250,7 @@ def _mock_analysis(user_text: str) -> dict:
     # ── Subscriptions ──────────────────────────────────────────────────
     SUBS = {
         "netflix":          ("Netflix",               "499",  "INR", "monthly"),
-        "spotify":          ("Spotify",               "199",  "INR", "monthly"),
+        "spotify":          ("Spotify",               "179",  "INR", "monthly"),
         "amazon prime":     ("Amazon Prime",          "299",  "INR", "monthly"),
         "prime video":      ("Prime Video",           "299",  "INR", "monthly"),
         "youtube premium":  ("YouTube Premium",       "189",  "INR", "monthly"),
@@ -247,26 +272,47 @@ def _mock_analysis(user_text: str) -> dict:
 
     for keyword, (name, amount, currency, freq) in SUBS.items():
         if keyword in text_lower:
+            from storage import get_item_history
+            persisted = get_item_history("subscription", keyword)
+            
+            # Extract current amount
             amount, _ = _extract_amts(keyword, amount, "0", currency)
             risk = _risk_for_amount(amount, currency)
+            
+            # Baseline reasoning for first-time subscriptions
+            if not persisted:
+                reasoning = [
+                    f"Initial {freq} subscription detected",
+                    "Establishing baseline for autonomous management",
+                    "Monitoring for usage anomalies"
+                ]
+            else:
+                prev_amount = persisted.get("current_amount", "0")
+                reasoning = [
+                    f"Recurring {freq} subscription verified",
+                    f"Matched with previous activity (Prior: {currency} {prev_amount})",
+                    "Configured auto-cancel and auto-pause bounds"
+                ]
+
+            # Parse duration from the user's raw text
+            duration_mo = _extract_duration_months(user_text)
+
             items.append({
                 "type": "subscription",
                 "name": name,
+                "bill_key": keyword,
+                "last_updated": persisted.get("last_updated") if persisted else None,
                 "amount": amount,
                 "currency": currency,
                 "frequency": freq,
                 "raw_text": f"{name} {currency} {amount}/{freq}",
                 "decision": "create_subscription_contract",
                 "action": "create_subscription_contract",
-                "duration": "3",
+                "duration": str(duration_mo),
                 "risk": risk,
-                "reasoning": [
-                    f"Recurring {freq} subscription detected (Risk: {risk})",
-                    "Classified as autonomous subscription contract",
-                    "Configured auto-cancel and auto-pause bounds"
-                ],
+                "reasoning": reasoning,
                 "contract_params": {
-                    "duration_months": 3,
+                    "duration_months": duration_mo,
                     "auto_cancel": True,
                     "auto_pause_if_inactive": True,
                     "alert_days_before": 3
@@ -274,37 +320,62 @@ def _mock_analysis(user_text: str) -> dict:
             })
 
     # ── Bills ──────────────────────────────────────────────────────────
-    # Each entry: keyword → (name, current_amount, previous_amount, currency, due_offset_days)
-    BILLS = {
-        "electricity": ("Electricity Bill", "2800", "1500", "INR", 12),
-        "internet":    ("Internet Bill",     "999",  "999",  "INR", 18),
-        "broadband":   ("Broadband Bill",    "799",  "799",  "INR", 18),
-        "mobile":      ("Mobile Bill",       "499",  "499",  "INR", 22),
-        "water":       ("Water Bill",        "300",  "300",  "INR", 28),
-        "gas":         ("Gas Bill",          "1800", "800",  "INR", 25),
-        "wifi":        ("WiFi Bill",         "799",  "799",  "INR", 18),
-        "dth":         ("DTH Bill",          "350",  "350",  "INR", 5),
-        "landline":    ("Landline Bill",     "250",  "250",  "INR", 20),
-        "maintenance": ("Maintenance Bill",  "2500", "2000", "INR", 10),
-    }
+    from storage import load_history
+    history = load_history()
 
+    # Pre-defined patterns for discovery (if not in history)
+    BILL_KEYWORDS = ["electricity", "internet", "broadband", "mobile", "water", "gas", "wifi", "dth", "landline", "maintenance"]
+    
     from datetime import datetime, timedelta
     today = datetime.utcnow()
 
-    for keyword, (name, amount, prev_amount, currency, due_offset) in BILLS.items():
+    for keyword in BILL_KEYWORDS:
         if keyword in text_lower:
-            amount, prev_amount = _extract_amts(keyword, amount, prev_amount, currency)
+            # 1. Get default mock if never seen before
+            DEFAULT_BILLS = {
+                "electricity": ("Electricity Bill", "2800", "1500", "INR", 12),
+                "internet":    ("Internet Bill",     "999",  "999",  "INR", 18),
+                "broadband":   ("Broadband Bill",    "799",  "799",  "INR", 18),
+                "mobile":      ("Mobile Bill",       "499",  "499",  "INR", 22),
+                "water":       ("Water Bill",        "300",  "300",  "INR", 28),
+                "gas":         ("Gas Bill",          "1800", "800",  "INR", 25),
+                "wifi":        ("WiFi Bill",         "799",  "799",  "INR", 18),
+                "dth":         ("DTH Bill",          "350",  "350",  "INR", 5),
+                "landline":    ("Landline Bill",     "250",  "250",  "INR", 20),
+                "maintenance": ("Maintenance Bill",  "2500", "2000", "INR", 10),
+            }
+            
+            name, def_amt, def_prev, currency, due_offset = DEFAULT_BILLS.get(keyword, (keyword.capitalize(), "0", "0", "INR", 15))
+            
+            # 2. Check persistent history
+            from storage import get_item_history
+            persisted = get_item_history("bill", keyword)
+            
+            if persisted:
+                prev_amount = persisted.get("current_amount", def_prev)
+            else:
+                prev_amount = None # No history
+
+            # 3. Extract current amount from input text
+            amount, _ = _extract_amts(keyword, def_amt, prev_amount or def_prev, currency)
+            
             curr_amt = float(amount)
-            prev_amt = float(prev_amount)
+            prev_amt = float(prev_amount) if prev_amount else 0
             increase_pct = ((curr_amt - prev_amt) / prev_amt * 100) if prev_amt > 0 else 0
-            is_abnormal = increase_pct > 20   # >20% spike = abnormal
+            is_abnormal = increase_pct > 20 and prev_amt > 0
             is_high_value = curr_amt > 2000
             bill_risk = "high" if (is_high_value or is_abnormal) else "normal"
 
             due_date = (today + timedelta(days=due_offset)).strftime("%Y-%m-%d")
 
-            # Build reason with historical insight
-            if is_abnormal and is_high_value:
+            # Build reasoning (Suppress spike reasoning if no history)
+            if not persisted:
+                reasoning = [
+                    f"Initial detection of {name}",
+                    "Establishing historical usage baseline",
+                    f"Action required by {due_date}"
+                ]
+            elif is_abnormal and is_high_value:
                 reasoning = [
                     f"⚠️ HIGH ALERT: {increase_pct:.0f}% abnormal spike detected",
                     f"Prior usage: ₹{prev_amt:.0f} → Current: ₹{curr_amt:.0f}",
@@ -332,6 +403,8 @@ def _mock_analysis(user_text: str) -> dict:
             items.append({
                 "type": "bill",
                 "name": name,
+                "bill_key": keyword,
+                "last_updated": persisted.get("last_updated") if persisted else None,
                 "amount": amount,
                 "currency": currency,
                 "frequency": "monthly",
@@ -373,12 +446,35 @@ def _mock_analysis(user_text: str) -> dict:
     for keyword, (name, default_amount, currency) in PURCHASES.items():
         if keyword in text_lower and keyword not in seen_purchase_keys:
             seen_purchase_keys.add(keyword)
+            
+            from storage import get_item_history
+            persisted = get_item_history("purchase", keyword)
+            
+            # Extract current amount
             amount, _ = _extract_amts(keyword, default_amount, "0", currency)
 
             purchase_ts = datetime.utcnow().isoformat() + "Z"
+            
+            # Baseline reasoning for first-time purchases
+            if not persisted:
+                reasoning = [
+                    f"Initial purchase of {name} detected",
+                    "Establishing proof of ownership on-chain",
+                    "Activating 12-month automated warranty tracking"
+                ]
+            else:
+                prev_amount = persisted.get("current_amount", "0")
+                reasoning = [
+                    f"Verified {name} asset acquisition",
+                    f"Historical price check: {currency} {prev_amount}",
+                    "Updating warranty and ownership metadata"
+                ]
+
             items.append({
                 "type": "purchase",
                 "name": name,
+                "bill_key": keyword,
+                "last_updated": persisted.get("last_updated") if persisted else None,
                 "amount": amount,
                 "currency": currency,
                 "frequency": "one-time",
@@ -386,11 +482,7 @@ def _mock_analysis(user_text: str) -> dict:
                 "decision": "mint_nft",
                 "action": "mint_nft",
                 "risk": "low",
-                "reasoning": [
-                    f"One-time asset purchase detected ({'₹' if currency == 'INR' else '$'}{amount})",
-                    "Eligible for ERC-721 Proof of Ownership receipt",
-                    "Activating 12-month automated warranty tracking"
-                ],
+                "reasoning": reasoning,
                 "nft_params": {
                     "item_name": name,
                     "warranty_months": 12,

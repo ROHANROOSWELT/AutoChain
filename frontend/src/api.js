@@ -20,10 +20,13 @@ export const runPipeline = (text, autonomousMode = false) =>
 export const getAssets = () =>
   api.get('/assets').then(r => r.data)
 
-export const simulateTime = () =>
-  api.post('/simulate_time').then(r => r.data)
+export const simulateForward = (days = 30) =>
+  api.post(`/simulate/forward?days=${days}`).then(r => r.data)
 
-export const resetTime = () =>
-  api.post('/reset_time').then(r => r.data)
+export const resetSimulation = () =>
+  api.post('/simulate/reset').then(r => r.data)
+
+export const sendTransactionReceiptEmail = (item, tx_hash) =>
+  api.post('/simulate/email_receipt', { item, tx_hash }).then(r => r.data)
 
 export default api

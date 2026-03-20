@@ -1,0 +1,27 @@
+Testing read_only suppression...
+[PASS] Read-only mode suppressed email correctly.
+Alert message: ⚠️ Renewal alert: Netflix renewed on Mar 18, 2026
+[PASS] Data mapping for service name works correctly.
+[PASS] Normal mode sent email: Renewal Successful: Netflix
+[PASS] Email body contains correct data (no 'None' values).
+
+Testing bill logic (e.g. Electricity)...
+[PASS] Read-only mode suppressed bill email correctly.
+Bill alert message: 🔔 Due soon: Electricity (₹2500) is due in 1 day(s) on Mar 21, 2026
+[PASS] Bill name mapping (Electricity) works correctly.
+[PASS] Normal mode sent bill email: AutoChain Analysis: Electricity - INR 2500
+[PASS] Bill email contains correct data.
+
+Testing comprehensive bill alerts (Spike, High-Usage, Budget)...
+[PASS] Comprehensive email sent: AutoChain Analysis: Electricity - INR 5000
+Email body:
+Final Result for Electricity (Polkadot Hub Testnet): 
+
+🔔 ON-CHAIN SPIKE: Electricity increased by +900.0% (₹500 → ₹5000)
+🔔 ON-CHAIN ALERT: Electricity amount (₹5000) exceeds high-usage threshold of 2000 INR
+🔔 ON-CHAIN WARNING: Electricity is consuming more than 80% of your estimated monthly budget
+
+Scheduled Action: Bill Tracked & Monitored on Polkadot Hub.
+[PASS] Email contains all requested ON-CHAIN alerts and context.
+
+ALL TESTS PASSED!

@@ -1,70 +1,87 @@
-# AutoChain: Autonomous Web2 to Web3 Financial AI Agent
+<div align="center">
+  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/link.svg" width="80" alt="AutoChain Logo" />
+  <h1>AutoChain: Autonomous Web2 to Web3 Financial Agent</h1>
+  <p><strong>Transform everyday financial text into autonomous, self-executing Web3 smart contracts.</strong></p>
+</div>
 
-AutoChain is an intelligent financial agent that bridges the gap between Web2 financial data and Web3 blockchain assets. It uses AI to extract structured data from natural language, applies autonomous decision-making for risk assessment, and executes blockchain actions on the Polkadot Hub EVM (Simulated).
+---
 
 ## 🚀 Overview
 
-AutoChain reads raw financial text (such as "Bought iPhone ₹80000" or "Netflix 499/month"), understands the intent using AI, and converts these events into self-managed blockchain assets:
-- **Subscriptions** are converted into smart contracts with auto-cancel and renewal alerts.
-- **Utility Bills** are tracked with historical spike detection and budget warnings.
-- **Purchases** are minted as **ERC-721 NFT Receipts** with immutable proof of ownership and active warranty tracking.
+**AutoChain** is an intelligent, autonomous financial agent bridging the gap between Web2 financial data and Web3 blockchain assets. Built for the modern decentralized ecosystem, AutoChain reads unstructured financial text, uses advanced AI to understand intent, and automatically converts these events into fully self-managed blockchain assets on the **Polkadot Hub EVM Testnet**.
+
+Gone are the days of manually tracking subscriptions or losing paper receipts. AutoChain provides immutable ownership, automated bill auditing, and intelligent alerts in a completely decentralized environment.
 
 ## ✨ Key Features
 
-- **AI Extraction Engine**: Powered by OpenAI (GPT-4o-mini). Parses natural language into structured financial items.
-- **Autonomous Decision Engine**: Assesses financial risk (Low/Medium/High) and recommends specific blockchain actions.
-- **Automation Automaton**: Simulates time-based logic like warranty expiry, renewal alerts, and abnormal bill spikes.
-- **Blockchain Integration**:
-  - **NFT Receipts**: ERC-721 tokens representing physical or digital purchases.
-  - **Subscription Manager**: Smart contracts for managing recurring payments.
-  - **Bill Tracker**: On-chain tracking for utility and service bills.
-- **Polkadot Hub EVM Simulation**: High-fidelity simulation of blockchain state, transactions, and events.
+### 🧠 AI Extraction Engine
+Powered by advanced LLMs (OpenAI GPT-4o-mini), AutoChain flawlessly parses natural language inputs into structured blockchain actions. Try entering:  
+*"Bought an iPhone for ₹80,000 and subscribed to Netflix for ₹499/month."*
 
-## 🛠️ Tech Stack
+### ⚙️ Autonomous Smart Contract Execution
+AutoChain categorizes and governs assets natively via smart contracts:
+- **🔄 Subscriptions (SubscriptionManager)**: Converts recurring payments into smart contracts. Features built-in auto-renewal alerts, cycle tracking, and active governance.
+- **📊 Utility Bills (BillTracker)**: Deploys on-chain tracking for utilities. Includes intelligent spike detection, historical delta analysis, and budget overrun warnings.
+- **🛍️ Purchases (NFTReceipt)**: Mints ERC-721 NFT Receipts offering immutable proof of ownership, complete with on-chain metadata and active warranty tracking (e.g., "12-month warranty").
 
-- **Backend**: FastAPI (Python), OpenAI, Pydantic
-- **Frontend**: React, Vite, Tailwind CSS, Lucide React
-- **Blockchain**: Solidity (ERC-721, custom trackers), Polkadot Hub EVM (Simulated)
+### 📧 Intelligent Email Notifications & Receipts
+AutoChain acts as your personal financial assistant. Through direct SMTP routing, the agent proactively sends:
+- **Transaction Receipts**: Immediate email confirmations whenever a transaction is successfully written to the blockchain.
+- **Action Required Alerts**: Notifications for abnormal bill spikes, warranty expirations, and subscription renewals (e.g., "Pay or Cancel").
+
+### ⏳ Time Simulation
+Built-in developer tools allow you to fast-forward time instantly (`+30 Days`), enabling seamless testing of long-term contract lifecycles, warranty expiries, and automated renewal triggers.
+
+---
+
+## 🛠️ Architecture & Tech Stack
+
+- **Agent & AI Backend**: Python, FastAPI, OpenAI, Python `email` (SMTP)
+- **Frontend App**: React, Vite, Tailwind CSS, Lucide Icons
+- **Web3 Integration**: Ethers.js, MetaMask Wallet
+- **Smart Contracts**: Solidity (Custom Trackers, ERC-721)
+- **Blockchain Network**: Polkadot Hub EVM Testnet (`Chain ID: 420420417`)
+
+---
 
 ## 📦 Installation & Setup
 
 ### Prerequisites
-- Python 3.9+ 
-- Node.js & npm
-- OpenAI API Key (optional, defaults to mock mode)
+- [Node.js](https://nodejs.org/) & npm
+- [Python 3.9+](https://www.python.org/)
+- [MetaMask](https://metamask.io/) Extension
+- OpenAI API Key (Set in `backend/.env`)
+- SMTP Credentials (Set in `backend/.env` for email routing)
 
-### 1. Backend Setup
+### 1. Backend Setup (FastAPI)
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Windows: venv\Scripts\activate | Mac/Linux: source venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-### 2. Frontend Setup
+### 2. Frontend Setup (React/Vite)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-The application will be available at `http://localhost:5173`.
+The decentralized app will be available at `http://localhost:5173`. Make sure to connect your MetaMask wallet to the **Polkadot Hub Testnet**.
 
-## 📂 Project Structure
+---
 
-- `backend/`: FastAPI server, AI agent logic, automation rules, and blockchain simulator.
-- `contracts/`: Solidity smart contracts for NFT Receipts, Bill Tracking, and Subscriptions.
-- `frontend/`: React application with interactive dashboards for AI analysis and execution.
+## 📝 Usage Example
 
-## 📝 Example Usage
+1. **Input**: Enter *"Paid ₹2000 for electricity this month, previously it was ₹1500."*
+2. **AI Action**: AutoChain identifies a **Bill** with an **Abnormal Spike**.
+3. **Execution**: A transaction is broadcasted via MetaMask to the Polkadot Hub. 
+4. **Registry**: The `BillTracker` contract emits an `AbnormalIncreaseAlert`.
+5. **Notification**: AutoChain emails you a receipt of the transaction alongside an alert regarding the 33% usage spike.
 
-1. **Enter Text**: "Bought a MacBook for ₹1,20,000 and Netflix ₹499/month"
-2. **AI Analysis**: The agent extracts a **Purchase** (MacBook) and a **Subscription** (Netflix).
-3. **Execution**:
-   - The MacBook becomes an **NFT Receipt** with a 12-month warranty.
-   - Netflix is deployed as a **Subscription Manager** contract.
-4. **Registry**: View your newly created assets in the **Managed Assets** dashboard.
+---
 
 ## 📜 License
-MIT License
+Distributed under the MIT License. See `LICENSE` for more information.

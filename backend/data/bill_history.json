@@ -1,0 +1,22 @@
+{
+    "subscription:spotify": {
+        "type": "subscription",
+        "key": "spotify",
+        "previous_amount": "179",
+        "current_amount": "179",
+        "last_updated": "2026-03-20T08:20:11.919309",
+        "subscription_start": "2026-03-20T08:18:45.707319",
+        "duration_months": 1,
+        "renewal_count": 1
+    },
+    "bill:electricity": {
+        "type": "bill",
+        "key": "electricity",
+        "previous_amount": "2800",
+        "current_amount": "3500",
+        "last_updated": "2026-03-20T08:29:45.004002",
+        "subscription_start": null,
+        "duration_months": null,
+        "renewal_count": 0
+    }
+}
