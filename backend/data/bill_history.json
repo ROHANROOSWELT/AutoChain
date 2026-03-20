@@ -1,11 +1,11 @@
 {
-    "subscription:spotify": {
+    "subscription:netflix": {
         "type": "subscription",
-        "key": "spotify",
-        "previous_amount": "179",
-        "current_amount": "179",
-        "last_updated": "2026-03-20T08:20:11.919309",
-        "subscription_start": "2026-03-20T08:18:45.707319",
+        "key": "netflix",
+        "previous_amount": "499",
+        "current_amount": "499",
+        "last_updated": "2026-03-20T08:52:36.077702",
+        "subscription_start": "2026-03-20T08:51:14.207099",
         "duration_months": 1,
         "renewal_count": 1
     },
@@ -14,7 +14,7 @@
         "key": "electricity",
         "previous_amount": "2800",
         "current_amount": "3500",
-        "last_updated": "2026-03-20T08:29:45.004002",
+        "last_updated": "2026-03-20T08:55:43.800876",
         "subscription_start": null,
         "duration_months": null,
         "renewal_count": 0
